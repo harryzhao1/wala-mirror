@@ -30,7 +30,9 @@ public abstract class TestAjaxsltCallGraphShape extends TestJSCallGraphShape {
 
   @Test public void testAjaxslt() throws IOException, IllegalArgumentException, CancelException {
     URL url = getClass().getClassLoader().getResource("ajaxslt/test/xslt.html");
-    CallGraph CG = Util.makeHTMLCG(url);
+    // don't handle call / apply; it makes things blow up
+    CallGraph CG = Util.makeHTMLCG(url, false);
+    
     verifyGraphAssertions(CG, assertionsForAjaxslt);
   }
 

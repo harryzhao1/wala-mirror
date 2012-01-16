@@ -19,6 +19,7 @@ import java.util.Iterator;
 
 import com.ibm.wala.cast.ir.ssa.AstIRFactory;
 import com.ibm.wala.cast.loader.SingleClassLoaderFactory;
+import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.classLoader.Language;
 import com.ibm.wala.classLoader.SourceFileModule;
 import com.ibm.wala.classLoader.SourceModule;
@@ -28,11 +29,15 @@ import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
 import com.ibm.wala.ipa.callgraph.propagation.PointerKey;
-import com.ibm.wala.ipa.callgraph.propagation.PropagationCallGraphBuilder;
 import com.ibm.wala.ssa.IR;
 import com.ibm.wala.util.debug.Assertions;
 
 public class Util {
+
+  /**
+   * flag to prevent dumping of verbose call graph / pointer analysis output
+   */
+  private static final boolean AVOID_DUMP = true;
 
   public static SourceFileModule makeSourceModule(URL script, String dir, String name) {
     // DO NOT use File.separator here, since this name is matched against
@@ -72,14 +77,48 @@ public class Util {
     return new AnalysisCache(AstIRFactory.makeDefaultFactory());
   }
 
-  public static void dumpCG(PointerAnalysis PA, CallGraph CG) {
+  public static String getShortName(CGNode nd) {
+    IMethod method = nd.getMethod();
+    return getShortName(method);
+  }
 
+  public static String getShortName(IMethod method) {
+    String origName = method.getName().toString();
+    String result = origName;
+    if (origName.equals("do") || origName.equals("ctor")) {
+      result = method.getDeclaringClass().getName().toString();
+      result = result.substring(result.lastIndexOf('/') + 1);
+      if (origName.equals("ctor")) {
+        if (result.equals("LFunction")) {
+          String s = method.toString();
+          if (s.indexOf('(') != -1) {
+            String functionName = s.substring(s.indexOf('(') + 1, s.indexOf(')'));
+            functionName = functionName.substring(functionName.lastIndexOf('/') + 1);
+            result += " " + functionName;
+          }
+        }
+        result = "ctor of " + result;
+      }
+    } 
+    return result;
+  }
+
+  @SuppressWarnings("unused")
+  public static void dumpCG(PointerAnalysis PA, CallGraph CG) {
+    if (AVOID_DUMP)
+      return;
     for (Iterator x = CG.iterator(); x.hasNext();) {
       CGNode N = (CGNode) x.next();
-      System.err.println("\ncallees of node " + N.getMethod() + " " + N.getGraphNodeId());
-      for(Iterator<? extends CGNode> ns = CG.getSuccNodes(N); ns.hasNext(); ) {
-        System.err.println("\n  " + ns.next().getGraphNodeId());
+      System.err.print("callees of node " + getShortName(N) + " : [");
+      boolean fst = true;
+      for (Iterator<? extends CGNode> ns = CG.getSuccNodes(N); ns.hasNext();) {
+        if (fst)
+          fst = false;
+        else
+          System.err.print(", ");
+        System.err.print(getShortName(ns.next()));
       }
+      System.err.println("]");
       System.err.println("\nIR of node " + N.getGraphNodeId());
       IR ir = N.getIR();
       if (ir != null) {

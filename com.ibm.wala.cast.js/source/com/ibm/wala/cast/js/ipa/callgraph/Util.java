@@ -30,6 +30,7 @@ import com.ibm.wala.cast.loader.AstMethod.DebuggingInformation;
 import com.ibm.wala.cast.tree.CAstEntity;
 import com.ibm.wala.cast.tree.CAstNode;
 import com.ibm.wala.cast.tree.impl.CAstImpl;
+import com.ibm.wala.cast.tree.impl.CAstRewriterFactory;
 import com.ibm.wala.cast.tree.visit.CAstVisitor;
 import com.ibm.wala.cast.types.AstMethodReference;
 import com.ibm.wala.cast.util.CAstPrinter;
@@ -37,7 +38,6 @@ import com.ibm.wala.cfg.AbstractCFG;
 import com.ibm.wala.classLoader.ClassLoaderFactory;
 import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.SourceURLModule;
-import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.AnalysisScope;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
@@ -58,7 +58,12 @@ public class Util extends com.ibm.wala.cast.ipa.callgraph.Util {
    * the translator factory to be used for analysis TODO: pass the factory where
    * needed instead of using a global?
    */
-  protected static JavaScriptTranslatorFactory translatorFactory;
+  public static JavaScriptTranslatorFactory translatorFactory;
+  
+  /**
+   * preprocessor to run generated CAst trees through, null if none
+   */
+  public static CAstRewriterFactory preprocessor;
 
   /**
    * Set up the translator factory. This method should be called before invoking
@@ -71,9 +76,13 @@ public class Util extends com.ibm.wala.cast.ipa.callgraph.Util {
   public static JavaScriptTranslatorFactory getTranslatorFactory() {
     return translatorFactory;
   }
+  
+  public static void setPreprocessor(CAstRewriterFactory preprocessor) {
+    Util.preprocessor = preprocessor;
+  }
 
-  public static AnalysisOptions makeOptions(AnalysisScope scope, IClassHierarchy cha, Iterable<Entrypoint> roots) {
-    final AnalysisOptions options = new AnalysisOptions(scope, /*
+  public static JSAnalysisOptions makeOptions(AnalysisScope scope, IClassHierarchy cha, Iterable<Entrypoint> roots) {
+    final JSAnalysisOptions options = new JSAnalysisOptions(scope, /*
                                                                 * AstIRFactory.
                                                                 * makeDefaultFactory
                                                                 * (keepIRs),
@@ -93,7 +102,7 @@ public class Util extends com.ibm.wala.cast.ipa.callgraph.Util {
     if (translatorFactory == null) {
       throw new IllegalStateException("com.ibm.wala.cast.js.ipa.callgraph.Util.setTranslatorFactory() must be invoked before makeLoaders()");
     }
-    return new JavaScriptLoaderFactory(translatorFactory);
+    return new JavaScriptLoaderFactory(translatorFactory, preprocessor);
   }
 
   public static IClassHierarchy makeHierarchy(AnalysisScope scope, ClassLoaderFactory loaders) throws ClassHierarchyException {

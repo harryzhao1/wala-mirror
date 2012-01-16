@@ -15,35 +15,51 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.ibm.wala.cast.ir.ssa.AbstractReflectiveGet;
+import com.ibm.wala.cast.ir.ssa.AstIRFactory;
+import com.ibm.wala.cast.ir.ssa.AstIsDefinedInstruction;
+import com.ibm.wala.cast.ir.ssa.EachElementGetInstruction;
+import com.ibm.wala.cast.js.types.JavaScriptTypes;
 import com.ibm.wala.classLoader.CallSiteReference;
+import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.classLoader.IMethod;
 import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.Context;
 import com.ibm.wala.ipa.callgraph.ContextItem;
 import com.ibm.wala.ipa.callgraph.ContextKey;
 import com.ibm.wala.ipa.callgraph.ContextSelector;
+import com.ibm.wala.ipa.callgraph.impl.Everywhere;
+import com.ibm.wala.ipa.callgraph.propagation.ConcreteTypeKey;
+import com.ibm.wala.ipa.callgraph.propagation.ConstantKey;
 import com.ibm.wala.ipa.callgraph.propagation.FilteredPointerKey;
 import com.ibm.wala.ipa.callgraph.propagation.InstanceKey;
 import com.ibm.wala.ipa.callgraph.propagation.cfa.OneLevelSiteContextSelector;
+import com.ibm.wala.ipa.cha.IClassHierarchy;
 import com.ibm.wala.ssa.DefUse;
+import com.ibm.wala.ssa.IR;
+import com.ibm.wala.ssa.IRFactory;
+import com.ibm.wala.ssa.ReflectiveMemberAccess;
 import com.ibm.wala.ssa.SSAAbstractInvokeInstruction;
 import com.ibm.wala.ssa.SSAGetInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
+import com.ibm.wala.ssa.SSAOptions;
+import com.ibm.wala.types.MethodReference;
+import com.ibm.wala.util.collections.HashMapFactory;
+import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.intset.IntSet;
 import com.ibm.wala.util.intset.IntSetUtil;
 import com.ibm.wala.util.intset.MutableIntSet;
 
 public class ForInContextSelector implements ContextSelector {
 
-  public final static ContextKey FORIN_KEY = new ContextKey() {
-    
-  };
+  public final static ContextKey FORIN_KEY = new ContextKey() { };
   
-  public static final ContextItem FORIN_MARKER = new ContextItem() {
-    
-  };
+  public static final ContextItem FORIN_MARKER = new ContextItem() { };
   
   public static final String HACK_METHOD_STR = "_forin_body";
+  
+  // if this flag is set to true, functions are given ForInContexts based on their name
+  // if it is false, any function that uses its first argument as a property name will be given a ForInContext
+  public static final boolean USE_NAME_TO_SELECT_CONTEXT = false;
 
   public static boolean USE_CPA_IN_BODIES = false;
   
@@ -52,7 +68,7 @@ public class ForInContextSelector implements ContextSelector {
   public static boolean DEPENDENT_THRU_READS = true;
   
   public static class SelectiveCPAContext implements Context {
-      private final Context base;
+      protected final Context base;
       
       private final Map<ContextKey, InstanceKey> parameterObjs;
 
@@ -101,10 +117,10 @@ public class ForInContextSelector implements ContextSelector {
   
   }
   
-  public static class ForInContext extends SelectiveCPAContext {
+  public class ForInContext extends SelectiveCPAContext {
     
     ForInContext(Context base, InstanceKey obj) {
-      super(base, Collections.singletonMap(ContextKey.PARAMETERS[2], obj));
+      super(base, Collections.singletonMap(ContextKey.PARAMETERS[index], obj));
     }
     
     public ContextItem get(ContextKey key) {
@@ -117,14 +133,14 @@ public class ForInContextSelector implements ContextSelector {
     
     @Override
     public String toString() {
-      return "for in hack filter for " + get(ContextKey.PARAMETERS[2]);
+      return "for in hack filter for " + get(ContextKey.PARAMETERS[index]) + " over " + this.base;
     }
     
   }
     
   private final ContextSelector base;
-  
   private final ContextSelector oneLevel;
+  private final int index;
   
   private void collectValues(DefUse du, SSAInstruction inst, MutableIntSet values) {
     if (inst instanceof SSAGetInstruction) {
@@ -160,31 +176,149 @@ public class ForInContextSelector implements ContextSelector {
   }
   
   public ForInContextSelector(ContextSelector base) {
+    this(2, base);
+  }
+  
+  public ForInContextSelector(int index, ContextSelector base) {
+    this.index = index;
     this.base = base;
     this.oneLevel = new OneLevelSiteContextSelector(base);
   }
+  
+  private final HashMap<MethodReference, Boolean> forInOnFirstArg_cache = HashMapFactory.make();
+  public static final HashMap<MethodReference, DefUse> du_cache = HashMapFactory.make();
+  public static final IRFactory<IMethod> factory = AstIRFactory.makeDefaultFactory();
+  
+  // determine whether the method performs a for-in loop over the properties of its index'th argument
+  private boolean forInOnFirstArg(IMethod method) {
+    MethodReference mref = method.getReference();
+    if(method.getNumberOfParameters() < index)
+      return false;
+    Boolean b = forInOnFirstArg_cache.get(mref);
+    if(b != null)
+      return b;
+    DefUse du = getDefUse(method);
+    for(SSAInstruction use : Iterator2Iterable.make(du.getUses(3))) {
+      if(use instanceof EachElementGetInstruction) {
+        forInOnFirstArg_cache.put(mref, true);
+        return true;
+      }
+    }
+    forInOnFirstArg_cache.put(mref, false);
+    return false;
+  }
 
+  public static DefUse getDefUse(IMethod method) {
+    MethodReference mref = method.getReference();
+    DefUse du = du_cache.get(mref);
+    if(du == null) {
+      IR ir = factory.makeIR(method, Everywhere.EVERYWHERE, SSAOptions.defaultOptions());
+      du_cache.put(mref, du = new DefUse(ir));
+    }
+    return du;
+  }
+  
+  private enum Frequency { NEVER, SOMETIMES, ALWAYS };
+  private final HashMap<MethodReference, Frequency> usesFirstArgAsPropertyName_cache = HashMapFactory.make();
+  
+  // determine whether the method never/sometimes/always uses its first argument as a property name
+  private Frequency usesFirstArgAsPropertyName(IMethod method) {
+    MethodReference mref = method.getReference();
+    if(method.getNumberOfParameters() < index)
+      return Frequency.NEVER;
+    Frequency f = usesFirstArgAsPropertyName_cache.get(mref);
+    if(f != null)
+      return f;
+    boolean usedAsPropertyName = false, usedAsSomethingElse = false;
+    DefUse du = getDefUse(method);
+    for(SSAInstruction use : Iterator2Iterable.make(du.getUses(3))) {
+      if(use instanceof ReflectiveMemberAccess) {
+        ReflectiveMemberAccess rma = (ReflectiveMemberAccess)use;
+        if(rma.getMemberRef() == 3) {
+          usedAsPropertyName = true;
+          continue;
+        }
+      } else if(use instanceof AstIsDefinedInstruction) {
+        AstIsDefinedInstruction aidi = (AstIsDefinedInstruction)use;
+        if(aidi.getNumberOfUses() > 1 && aidi.getUse(1) == 3) {
+          usedAsPropertyName = true;
+          continue;
+        }
+      }
+      usedAsSomethingElse = true;
+    }
+    if(!usedAsPropertyName)
+      f = Frequency.NEVER;
+    else if(usedAsSomethingElse)
+      f = Frequency.SOMETIMES;
+    else
+      f = Frequency.ALWAYS;
+    usesFirstArgAsPropertyName_cache.put(mref, f);
+    return f;
+  }
+
+  // simulate effect of ToString conversion on key
+  private InstanceKey simulateToString(IClassHierarchy cha, InstanceKey key) {
+    IClass stringClass = cha.lookupClass(JavaScriptTypes.String);
+    IClass numberClass = cha.lookupClass(JavaScriptTypes.Number);
+    if(key instanceof ConstantKey) {
+      Object value = ((ConstantKey)key).getValue();
+      if(value instanceof String) {
+        return key;
+      } else if(value instanceof Number) {
+        Double dval = ((Number)value).doubleValue();
+        return new ConstantKey<Double>(dval, numberClass);
+      } else if(value instanceof Boolean) {
+        Boolean bval = (Boolean)value;
+        return new ConstantKey<String>(bval.toString(), stringClass);
+      } else if(value == null) {
+        return new ConstantKey<String>("null", stringClass);
+      }
+    } /*else if(key != null && key.getConcreteType() == numberClass) {
+      return key;
+    }*/
+    return new ConcreteTypeKey(stringClass);    
+  }
+  
   public Context getCalleeTarget(CGNode caller, CallSiteReference site, IMethod callee, final InstanceKey[] receiver) {
-    if (callee.getDeclaringClass().getName().toString().contains(HACK_METHOD_STR)) {
-      return new ForInContext(base.getCalleeTarget(caller, site, callee, receiver), receiver[2]);
-    } else if (USE_CPA_IN_BODIES && FORIN_MARKER.equals(caller.getContext().get(FORIN_KEY))) {
-      return new SelectiveCPAContext(base.getCalleeTarget(caller, site, callee, receiver), receiver);
+    Context baseContext = base.getCalleeTarget(caller, site, callee, receiver);
+    String calleeFullName = callee.getDeclaringClass().getName().toString();
+    String calleeShortName = calleeFullName.substring(calleeFullName.lastIndexOf('/')+1);
+    if(USE_NAME_TO_SELECT_CONTEXT) {
+      if(calleeShortName.contains(HACK_METHOD_STR) && receiver.length > index) {
+        // we assume that the argument is only used as a property name, so we can do ToString
+        return new ForInContext(baseContext, simulateToString(caller.getClassHierarchy(), receiver[index]));
+      }
+    } else if(receiver.length > index) {
+      Frequency f = usesFirstArgAsPropertyName(callee);
+      if(f == Frequency.ALWAYS) {
+        return new ForInContext(baseContext, simulateToString(caller.getClassHierarchy(), receiver[index]));
+      } else if(f == Frequency.SOMETIMES || forInOnFirstArg(callee)) {
+        if(receiver[index] == null) {
+          IClass undef = caller.getClassHierarchy().lookupClass(JavaScriptTypes.Undefined);
+          return new ForInContext(baseContext, new ConcreteTypeKey(undef));
+        } else {
+          return new ForInContext(baseContext, receiver[index]);
+        }
+      }
+    }
+    if (USE_CPA_IN_BODIES && FORIN_MARKER.equals(caller.getContext().get(FORIN_KEY))) {
+      return new SelectiveCPAContext(baseContext, receiver);
     } else if (USE_1LEVEL_IN_BODIES && FORIN_MARKER.equals(caller.getContext().get(FORIN_KEY))) {
       if (! identifyDependentParameters(caller, site).isEmpty()) {
         return oneLevel.getCalleeTarget(caller, site, callee, receiver);        
       } else {
-        return base.getCalleeTarget(caller, site, callee, receiver);
+        return baseContext;
       }
-    } else {
-      return base.getCalleeTarget(caller, site, callee, receiver);
     }
+    return baseContext;
   }
   
   public IntSet getRelevantParameters(CGNode caller, CallSiteReference site) {
     if (USE_CPA_IN_BODIES && FORIN_MARKER.equals(caller.getContext().get(FORIN_KEY))) {
       return identifyDependentParameters(caller, site);
-    } else if (caller.getIR().getCalls(site)[0].getNumberOfUses() > 2) {
-      return IntSetUtil.make(new int[]{2}).union(base.getRelevantParameters(caller, site));
+    } else if (caller.getIR().getCalls(site)[0].getNumberOfUses() > index) {
+      return IntSetUtil.make(new int[]{index}).union(base.getRelevantParameters(caller, site));
     } else {
       return base.getRelevantParameters(caller, site);
     }

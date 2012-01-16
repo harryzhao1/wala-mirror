@@ -23,6 +23,7 @@ import java.util.Map;
 import org.mozilla.javascript.tools.ToolErrorReporter;
 
 import com.ibm.wala.cast.js.html.MappedSourceModule;
+import com.ibm.wala.cast.js.ipa.callgraph.JSSSAPropagationCallGraphBuilder;
 import com.ibm.wala.cast.js.loader.JavaScriptLoader;
 import com.ibm.wala.cast.js.types.JavaScriptTypes;
 import com.ibm.wala.cast.tree.CAst;
@@ -118,7 +119,7 @@ public class RhinoToAstTranslator {
     /**
      * @see BaseCollectingContext
      */
-    CAstNode getBaseVarIfRelevant(Node node);
+    String getBaseVarNameIfRelevant(Node node);
 
     /**
      * @see BaseCollectingContext
@@ -196,7 +197,7 @@ public class RhinoToAstTranslator {
       return null;
     }
 
-    public CAstNode getBaseVarIfRelevant(Node node) {
+    public String getBaseVarNameIfRelevant(Node node) {
       return null;
     }
 
@@ -268,8 +269,8 @@ public class RhinoToAstTranslator {
       return parent.getCatchTarget();
     }
 
-    public CAstNode getBaseVarIfRelevant(Node node) {
-      return parent.getBaseVarIfRelevant(node);
+    public String getBaseVarNameIfRelevant(Node node) {
+      return parent.getBaseVarNameIfRelevant(node);
     }
 
     public boolean foundBase(Node node) {
@@ -447,30 +448,30 @@ public class RhinoToAstTranslator {
     private Node baseFor;
 
     /**
-     * the variable to be used to store the value of the expression passed as
-     * the 'this' parameter
+     * the name of the variable to be used to store the value of the expression 
+     * passed as the 'this' parameter
      */
-    private final CAstNode baseVar;
+    private final String baseVarName;
 
     /**
      * have we discovered a value to be passed as the 'this' parameter?
      */
     private boolean foundBase = false;
 
-    BaseCollectingContext(WalkContext parent, Node initialBaseFor, CAstNode baseVar) {
+    BaseCollectingContext(WalkContext parent, Node initialBaseFor, String baseVarName) {
       super(parent);
       baseFor = initialBaseFor;
-      this.baseVar = baseVar;
+      this.baseVarName = baseVarName;
     }
 
     /**
      * if node is one that we care about, return baseVar, and as a side effect
      * set foundBase to true. Otherwise, return <code>null</code>.
      */
-    public CAstNode getBaseVarIfRelevant(Node node) {
+    public String getBaseVarNameIfRelevant(Node node) {
       if (baseFor.equals(node)) {
         foundBase = true;
-        return baseVar;
+        return baseVarName;
       } else {
         return null;
       }
@@ -656,7 +657,7 @@ public class RhinoToAstTranslator {
 
     return call;
   }
-
+  
   /**
    * count the number of successor siblings of n, including n
    */
@@ -685,9 +686,12 @@ public class RhinoToAstTranslator {
     private final CAstControlFlowMap map;
 
     private final CAstSourcePositionMap pos;
+    
+    private final Position mypos;
 
     ScriptOrFnEntity(ScriptOrFnNode n, Map<CAstNode, Collection<CAstEntity>> subs, CAstNode ast, CAstControlFlowMap map,
         CAstSourcePositionMap pos) {
+      mypos = makePosition(n);
       if (n instanceof FunctionNode) {
         String x = ((FunctionNode) n).getFunctionName();
         if (x == null || "".equals(x)) {
@@ -772,7 +776,7 @@ public class RhinoToAstTranslator {
     }
 
     public CAstSourcePositionMap.Position getPosition() {
-      return null;
+      return mypos;
     }
 
     public CAstNodeTypeMap getNodeTypeMap() {
@@ -858,13 +862,21 @@ public class RhinoToAstTranslator {
 
   private CAstNode noteSourcePosition(WalkContext context, CAstNode n, Node p) {
     if (p.getLineno() != -1 && context.pos().getPosition(n) == null) {
-      context.pos().setPosition(n, makePosition(p));
+      propagateSourcePosition(n, p, context.pos());
     }
     return n;
   }
+  
+  private void propagateSourcePosition(CAstNode n, Node p, CAstSourcePositionRecorder poss) {
+    if(poss.getPosition(n) == null) {
+      poss.setPosition(n, makePosition(p));
+      for(int i=0;i<n.getChildCount();++i)
+        propagateSourcePosition(n.getChild(i), p, poss);
+    }
+  }
 
   private CAstNode readName(WalkContext context, String name) {
-    CAstNode cn = Ast.makeNode(CAstNode.VAR, Ast.makeConstant(name));
+    CAstNode cn = makeVarRef(name);
     context.cfg().map(cn, cn);
     CAstNode target = context.getCatchTarget();
     if (target != null) {
@@ -1107,9 +1119,9 @@ public class RhinoToAstTranslator {
 
     case Token.CALL: {
       if (!isPrimitiveCall(context, n)) {
-        CAstNode base = Ast.makeNode(CAstNode.VAR, Ast.makeConstant("base"));
+        CAstNode base = makeVarRef("$$ base");
         Node callee = n.getFirstChild();
-        WalkContext child = new BaseCollectingContext(context, callee, base);
+        WalkContext child = new BaseCollectingContext(context, callee, "$$ base");
         CAstNode fun = walkNodes(callee, child);
 
         // the first actual parameter appearing within the parentheses of the
@@ -1119,10 +1131,12 @@ public class RhinoToAstTranslator {
           return Ast.makeNode(
               CAstNode.LOCAL_SCOPE,
               Ast.makeNode(CAstNode.BLOCK_EXPR,
-                  Ast.makeNode(CAstNode.DECL_STMT, Ast.makeConstant(new CAstSymbolImpl("base")), Ast.makeConstant(null)),
+                  Ast.makeNode(CAstNode.DECL_STMT, Ast.makeConstant(new CAstSymbolImpl("$$ base")), Ast.makeConstant(null)),
                   makeCall(fun, base, firstParamInParens, context)));
-        else
-          return makeCall(fun, Ast.makeConstant(null), firstParamInParens, context);
+        else {
+          // pass the global object as the receiver argument
+          return makeCall(fun, makeVarRef(JSSSAPropagationCallGraphBuilder.GLOBAL_OBJ_VAR_NAME), firstParamInParens, context);
+        }
       } else {
         return Ast.makeNode(CAstNode.PRIMITIVE, gatherChildren(n, context, 1));
       }
@@ -1134,11 +1148,11 @@ public class RhinoToAstTranslator {
     }
 
     case Token.THIS: {
-      return Ast.makeNode(CAstNode.VAR, Ast.makeConstant("this"));
+      return makeVarRef("this");
     }
 
     case Token.THISFN: {
-      return Ast.makeNode(CAstNode.VAR, Ast.makeConstant(((FunctionNode) context.top()).getFunctionName()));
+      return makeVarRef(((FunctionNode) context.top()).getFunctionName());
     }
 
     case Token.STRING: {
@@ -1206,7 +1220,7 @@ public class RhinoToAstTranslator {
         if (nm.getFirstChild() != null) {
           WalkContext child = new ExpressionContext(context);
 
-          result.add(Ast.makeNode(CAstNode.ASSIGN, Ast.makeNode(CAstNode.VAR, Ast.makeConstant(nm.getString())),
+          result.add(Ast.makeNode(CAstNode.ASSIGN, makeVarRef(nm.getString()),
               walkNodes(nm.getFirstChild(), child)));
 
         }
@@ -1244,11 +1258,11 @@ public class RhinoToAstTranslator {
     }
 
     case Token.ENUM_ID: {
-      return Ast.makeNode(CAstNode.EACH_ELEMENT_GET, Ast.makeNode(CAstNode.VAR, Ast.makeConstant(context.getForInInitVar())));
+      return Ast.makeNode(CAstNode.EACH_ELEMENT_GET, makeVarRef(context.getForInInitVar()));
     }
 
     case Token.ENUM_NEXT: {
-      return Ast.makeNode(CAstNode.EACH_ELEMENT_HAS_NEXT, Ast.makeNode(CAstNode.VAR, Ast.makeConstant(context.getForInInitVar())));
+      return Ast.makeNode(CAstNode.EACH_ELEMENT_HAS_NEXT, makeVarRef(context.getForInInitVar()));
     }
 
     case Token.RETURN: {
@@ -1309,15 +1323,29 @@ public class RhinoToAstTranslator {
     }
 
     case Token.OR: {
-      Node l = n.getFirstChild();
-      Node r = l.getNext();
-      return Ast.makeNode(CAstNode.IF_EXPR, walkNodes(l, context), Ast.makeConstant(true), walkNodes(r, context));
+    	Node l = n.getFirstChild();
+    	Node r = l.getNext();
+    	CAstNode lhs = walkNodes(l, context);
+    	String lhsTempName = "or___lhs";
+    	// { lhsTemp := <lhs>; if(lhsTemp) { lhsTemp } else { <rhs> }
+    	return Ast.makeNode(
+    			CAstNode.LOCAL_SCOPE,
+    			Ast.makeNode(CAstNode.BLOCK_EXPR,
+    					Ast.makeNode(CAstNode.DECL_STMT, Ast.makeConstant(new CAstSymbolImpl(lhsTempName)), lhs),
+    					Ast.makeNode(CAstNode.IF_EXPR, makeVarRef(lhsTempName), makeVarRef(lhsTempName), walkNodes(r, context))));
     }
 
     case Token.AND: {
       Node l = n.getFirstChild();
       Node r = l.getNext();
-      return Ast.makeNode(CAstNode.IF_EXPR, walkNodes(l, context), walkNodes(r, context), Ast.makeConstant(false));
+      CAstNode lhs = walkNodes(l, context);
+      String lhsTempName = "and___lhs";
+      // { lhsTemp := <lhs>; if(lhsTemp) { <rhs> } else { lhsTemp }
+      return Ast.makeNode(
+    		  CAstNode.LOCAL_SCOPE,
+    		  Ast.makeNode(CAstNode.BLOCK_EXPR,
+    				  Ast.makeNode(CAstNode.DECL_STMT, Ast.makeConstant(new CAstSymbolImpl(lhsTempName)), lhs),
+    				  Ast.makeNode(CAstNode.IF_EXPR, makeVarRef(lhsTempName), walkNodes(r, context), makeVarRef(lhsTempName))));
     }
 
     case Token.HOOK: {
@@ -1401,14 +1429,14 @@ public class RhinoToAstTranslator {
       Node element = receiver.getNext();
 
       CAstNode rcvr = walkNodes(receiver, context);
-      CAstNode baseVar = context.getBaseVarIfRelevant(n);
+      String baseVarName = context.getBaseVarNameIfRelevant(n);
 
       CAstNode elt = walkNodes(element, context);
 
       CAstNode get, result;
-      if (baseVar != null) {
-        result = Ast.makeNode(CAstNode.BLOCK_EXPR, Ast.makeNode(CAstNode.ASSIGN, baseVar, rcvr),
-            get = Ast.makeNode(CAstNode.OBJECT_REF, baseVar, elt));
+      if (baseVarName != null) {
+        result = Ast.makeNode(CAstNode.BLOCK_EXPR, Ast.makeNode(CAstNode.ASSIGN, makeVarRef(baseVarName), rcvr),
+            get = Ast.makeNode(CAstNode.OBJECT_REF, makeVarRef(baseVarName), elt));
       } else {
         result = get = Ast.makeNode(CAstNode.OBJECT_REF, rcvr, elt);
       }
@@ -1475,20 +1503,20 @@ public class RhinoToAstTranslator {
       Node element = receiver.getNext();
 
       CAstNode rcvr = walkNodes(receiver, context);
-      CAstNode baseVar = context.getBaseVarIfRelevant(n);
+      String baseVarName = context.getBaseVarNameIfRelevant(n);
 
       CAstNode elt = walkNodes(element, context);
 
-      if (baseVar != null) {
-        return Ast.makeNode(CAstNode.BLOCK_EXPR, Ast.makeNode(CAstNode.ASSIGN, baseVar, rcvr),
-            Ast.makeNode(CAstNode.ASSIGN, Ast.makeNode(CAstNode.OBJECT_REF, baseVar, elt), Ast.makeConstant(null)));
+      if (baseVarName != null) {
+        return Ast.makeNode(CAstNode.BLOCK_EXPR, Ast.makeNode(CAstNode.ASSIGN, makeVarRef(baseVarName), rcvr),
+            Ast.makeNode(CAstNode.ASSIGN, Ast.makeNode(CAstNode.OBJECT_REF, makeVarRef(baseVarName), elt), Ast.makeConstant(null)));
       } else {
         return Ast.makeNode(CAstNode.ASSIGN, Ast.makeNode(CAstNode.OBJECT_REF, rcvr, elt), Ast.makeConstant(null));
       }
     }
 
     case Token.TYPEOFNAME: {
-      return Ast.makeNode(CAstNode.TYPE_OF, Ast.makeNode(CAstNode.VAR, Ast.makeConstant(n.getString())));
+      return Ast.makeNode(CAstNode.TYPE_OF, makeVarRef(n.getString()));
     }
 
     case Token.TYPEOF: {
@@ -1533,7 +1561,7 @@ public class RhinoToAstTranslator {
     case Token.IN: {
       Node value = n.getFirstChild();
       Node property = value.getNext();
-      return Ast.makeNode(CAstNode.IS_DEFINED_EXPR, walkNodes(value, context), walkNodes(property, context));
+      return Ast.makeNode(CAstNode.IS_DEFINED_EXPR, walkNodes(property, context), walkNodes(value, context));
     }
 
     default: {
@@ -1544,6 +1572,10 @@ public class RhinoToAstTranslator {
       return null;
     }
     }
+  }
+
+  private CAstNode makeVarRef(String varName) {
+	  return Ast.makeNode(CAstNode.VAR, Ast.makeConstant(varName));
   }
 
   /**
@@ -1582,5 +1614,9 @@ public class RhinoToAstTranslator {
     this.Ast = Ast;
     this.scriptName = scriptName;
     this.sourceModule = M;
+  }
+
+  public static void resetGensymCounters() {
+    LoopContext.counter = 0;
   }
 }

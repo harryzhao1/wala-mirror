@@ -57,6 +57,7 @@ import com.ibm.wala.cast.tree.CAst;
 import com.ibm.wala.cast.tree.CAstEntity;
 import com.ibm.wala.cast.tree.CAstQualifier;
 import com.ibm.wala.cast.tree.CAstSourcePositionMap;
+import com.ibm.wala.cast.tree.impl.CAstRewriterFactory;
 import com.ibm.wala.cast.types.AstMethodReference;
 import com.ibm.wala.cfg.AbstractCFG;
 import com.ibm.wala.classLoader.CallSiteReference;
@@ -347,20 +348,22 @@ public class JavaScriptLoader extends CAstAbstractModuleLoader {
           };
         }
 
-        public SSACheckCastInstruction CheckCastInstruction(int iindex, int result, int val, TypeReference[] types) {
+        public SSACheckCastInstruction CheckCastInstruction(int iindex, int result, int val, TypeReference[] types, boolean isPEI) {
           throw new UnsupportedOperationException();
         }
 
-        public SSACheckCastInstruction CheckCastInstruction(int iindex, int result, int val, int[] typeValues) {
+        public SSACheckCastInstruction CheckCastInstruction(int iindex, int result, int val, int[] typeValues, boolean isPEI) {
           throw new UnsupportedOperationException();
         }
 
-        public SSACheckCastInstruction CheckCastInstruction(int iindex, int result, int val, int typeValue) {
-          return CheckCastInstruction(iindex, result, val, new int[] { typeValue });
+        public SSACheckCastInstruction CheckCastInstruction(int iindex, int result, int val, int typeValue, boolean isPEI) {
+          assert isPEI;
+          return CheckCastInstruction(iindex, result, val, new int[]{ typeValue }, true);
         }
 
-        public SSACheckCastInstruction CheckCastInstruction(int iindex, int result, int val, TypeReference type) {
-          return CheckCastInstruction(iindex, result, val, new TypeReference[] { type });
+        public SSACheckCastInstruction CheckCastInstruction(int iindex, int result, int val, TypeReference type, boolean isPEI) {
+          assert isPEI;
+          return CheckCastInstruction(iindex, result, val, new TypeReference[]{ type }, true);
         }
 
         public SSAComparisonInstruction ComparisonInstruction(int iindex, Operator operator, int result, int val1, int val2) {
@@ -570,10 +573,17 @@ public class JavaScriptLoader extends CAstAbstractModuleLoader {
   private static final Map<Atom, IField> emptyMap2 = Collections.emptyMap();
 
   private final JavaScriptTranslatorFactory translatorFactory;
-
+  
+  private final CAstRewriterFactory preprocessor;
+  
   public JavaScriptLoader(IClassHierarchy cha, JavaScriptTranslatorFactory translatorFactory) {
+    this(cha, translatorFactory, null);
+  }
+
+  public JavaScriptLoader(IClassHierarchy cha, JavaScriptTranslatorFactory translatorFactory, CAstRewriterFactory preprocessor) {
     super(cha);
     this.translatorFactory = translatorFactory;
+    this.preprocessor = preprocessor;
   }
 
   class JavaScriptClass extends AstClass {
@@ -856,9 +866,13 @@ public class JavaScriptLoader extends CAstAbstractModuleLoader {
     super.init(all);
   }
 
+  @SuppressWarnings("unchecked")
   @Override
-  protected TranslatorToCAst getTranslatorToCAst(CAst ast, SourceModule module) {
-    return translatorFactory.make(ast, module);
+  protected TranslatorToCAst getTranslatorToCAst(final CAst ast, SourceModule module) {
+    TranslatorToCAst translator = translatorFactory.make(ast, module);
+    if(preprocessor != null)
+      translator.addRewriter(preprocessor, true);
+    return translator;
   }
 
   @Override

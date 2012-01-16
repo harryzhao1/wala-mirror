@@ -12,7 +12,10 @@ package com.ibm.wala.cast.js.test;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
+
+import junit.framework.Assert;
 
 import org.junit.Test;
 
@@ -27,6 +30,7 @@ import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.util.CancelException;
 import com.ibm.wala.util.collections.HashSetFactory;
 import com.ibm.wala.util.collections.IVector;
+import com.ibm.wala.util.collections.Iterator2Collection;
 import com.ibm.wala.util.collections.Pair;
 import com.ibm.wala.util.collections.SparseVector;
 import com.ibm.wala.util.intset.IntSetAction;
@@ -50,7 +54,8 @@ public abstract class TestSimpleCallGraphShape extends TestJSCallGraphShape {
       new Object[] { "tests/simple.js/fib", new String[] { "tests/simple.js/fib" } },
       new Object[] { "tests/simple.js/weirder", new String[] { "prologue.js/abs" } } };
 
-  @Test public void testSimple() throws IOException, IllegalArgumentException, CancelException {
+  @Test
+  public void testSimple() throws IOException, IllegalArgumentException, CancelException {
     CallGraph CG = Util.makeScriptCG("tests", "simple.js");
     verifyGraphAssertions(CG, assertionsForSimple);
   }
@@ -63,7 +68,8 @@ public abstract class TestSimpleCallGraphShape extends TestJSCallGraphShape {
           new String[] { "tests/objects.js/something", "tests/objects.js/objects_are_fun/nothing" } },
       new Object[] { "tests/objects.js/objects_are_fun", new String[] { "tests/objects.js/other", "tests/objects.js/whatever" } } };
 
-  @Test public void testObjects() throws IOException, IllegalArgumentException, CancelException {
+  @Test
+  public void testObjects() throws IOException, IllegalArgumentException, CancelException {
     CallGraph CG = Util.makeScriptCG("tests", "objects.js");
     verifyGraphAssertions(CG, assertionsForObjects);
   }
@@ -77,20 +83,25 @@ public abstract class TestSimpleCallGraphShape extends TestJSCallGraphShape {
               "tests/inherit.js/sharedClassObject/Rectangle/area" } },
   /*
    * new Object[]{"tests/inherit.js/objectMasquerading", new
-   * String[]{"ctor:tests/inherit.js/objectMasquerading/Rectangle"}}, new Object[]{"tests/inherit.js/sharedClassObject",
-   * new String[]{"ctor:tests/inherit.js/sharedClassObject/Rectangle"}},
+   * String[]{"ctor:tests/inherit.js/objectMasquerading/Rectangle"}}, new
+   * Object[]{"tests/inherit.js/sharedClassObject", new
+   * String[]{"ctor:tests/inherit.js/sharedClassObject/Rectangle"}},
    */
   };
 
-  @Test public void testInherit() throws IOException, IllegalArgumentException, CancelException {
+  @Test
+  public void testInherit() throws IOException, IllegalArgumentException, CancelException {
     CallGraph CG = Util.makeScriptCG("tests", "inherit.js");
     verifyGraphAssertions(CG, assertionsForInherit);
   }
 
-  private static final Object[][] assertionsForNewfn = new Object[][] { new Object[] { ROOT, new String[] { "tests/newfn.js" } },
-      new Object[] { "tests/newfn.js", new String[] { "suffix:ctor$1/_fromctor", "suffix:ctor$2/_fromctor", "suffix:ctor$3/_fromctor" } } };
+  private static final Object[][] assertionsForNewfn = new Object[][] {
+      new Object[] { ROOT, new String[] { "tests/newfn.js" } },
+      new Object[] { "tests/newfn.js",
+          new String[] { "suffix:ctor$1/_fromctor", "suffix:ctor$2/_fromctor", "suffix:ctor$3/_fromctor" } } };
 
-  @Test public void testNewfn() throws IOException, IllegalArgumentException, CancelException {
+  @Test
+  public void testNewfn() throws IOException, IllegalArgumentException, CancelException {
     CallGraph CG = Util.makeScriptCG("tests", "newfn.js");
     verifyGraphAssertions(CG, assertionsForNewfn);
   }
@@ -102,7 +113,8 @@ public abstract class TestSimpleCallGraphShape extends TestJSCallGraphShape {
           new String[] { "tests/control-flow.js/testSwitch", "tests/control-flow.js/testDoWhile",
               "tests/control-flow.js/testWhile", "tests/control-flow.js/testFor", "tests/control-flow.js/testReturn" } } };
 
-  @Test public void testControlflow() throws IOException, IllegalArgumentException, CancelException {
+  @Test
+  public void testControlflow() throws IOException, IllegalArgumentException, CancelException {
     CallGraph CG = Util.makeScriptCG("tests", "control-flow.js");
     verifyGraphAssertions(CG, assertionsForControlflow);
   }
@@ -115,7 +127,8 @@ public abstract class TestSimpleCallGraphShape extends TestJSCallGraphShape {
               "tests/more-control-flow.js/testDoWhile", "tests/more-control-flow.js/testWhile",
               "tests/more-control-flow.js/testFor", "tests/more-control-flow.js/testReturn" } } };
 
-  @Test public void testMoreControlflow() throws IOException, IllegalArgumentException, CancelException {
+  @Test
+  public void testMoreControlflow() throws IOException, IllegalArgumentException, CancelException {
     CallGraph CG = Util.makeScriptCG("tests", "more-control-flow.js");
     verifyGraphAssertions(CG, assertionsForMoreControlflow);
   }
@@ -124,7 +137,8 @@ public abstract class TestSimpleCallGraphShape extends TestJSCallGraphShape {
       new Object[] { "tests/forin.js", new String[] { "tests/forin.js/testForIn" } },
       new Object[] { "tests/forin.js/testForIn", new String[] { "tests/forin.js/testForIn1", "tests/forin.js/testForIn2" } } };
 
-  @Test public void testForin() throws IOException, IllegalArgumentException, CancelException {
+  @Test
+  public void testForin() throws IOException, IllegalArgumentException, CancelException {
     CallGraph CG = Util.makeScriptCG("tests", "forin.js");
     verifyGraphAssertions(CG, assertionsForForin);
   }
@@ -141,11 +155,30 @@ public abstract class TestSimpleCallGraphShape extends TestJSCallGraphShape {
       new Object[] { "tests/simple-lexical.js/outer/indirect",
           new String[] { "tests/simple-lexical.js/outer/inner", "tests/simple-lexical.js/outer/inner3" } } };
 
-  @Test public void testSimpleLexical() throws IOException, IllegalArgumentException, CancelException {
+  @Test
+  public void testSimpleLexical() throws IOException, IllegalArgumentException, CancelException {
     CallGraph CG = Util.makeScriptCG("tests", "simple-lexical.js");
     verifyGraphAssertions(CG, assertionsForSimpleLexical);
   }
 
+  @Test
+  public void testRecursiveLexical() throws IOException, IllegalArgumentException, CancelException {
+    // just checking that we have a sufficient bailout to ensure termination
+    Util.makeScriptCG("tests", "recursive_lexical.js");
+  }
+  
+  private static final Object[][] assertionsForLexicalMultiple = new Object[][] {
+    new Object[] { ROOT, new String[] { "tests/lexical_multiple_calls.js" } },
+    new Object[] { "suffix:lexical_multiple_calls.js", new String[] { "suffix:reachable1" } }, 
+    new Object[] { "suffix:lexical_multiple_calls.js", new String[] { "suffix:reachable2" } }};
+  
+  @Test
+  public void testLexicalMultiple() throws IOException, IllegalArgumentException, CancelException {
+    CallGraph CG = Util.makeScriptCG("tests", "lexical_multiple_calls.js");
+    verifyGraphAssertions(CG, assertionsForLexicalMultiple);
+  }
+
+  
   private static final Object[][] assertionsForTry = new Object[][] {
       new Object[] { ROOT, new String[] { "tests/try.js" } },
       new Object[] { "tests/try.js",
@@ -157,7 +190,8 @@ public abstract class TestSimpleCallGraphShape extends TestJSCallGraphShape {
       new Object[] { "tests/try.js/tryCatchFinally",
           new String[] { "tests/try.js/targetOne", "tests/try.js/targetTwo", "tests/try.js/three", "tests/try.js/two" } } };
 
-  @Test public void testTry() throws IOException, IllegalArgumentException, CancelException {
+  @Test
+  public void testTry() throws IOException, IllegalArgumentException, CancelException {
     CallGraph CG = Util.makeScriptCG("tests", "try.js", true);
     verifyGraphAssertions(CG, assertionsForTry);
   }
@@ -166,7 +200,8 @@ public abstract class TestSimpleCallGraphShape extends TestJSCallGraphShape {
       new Object[] { ROOT, new String[] { "tests/string-op.js" } },
       new Object[] { "tests/string-op.js", new String[] { "tests/string-op.js/getOp", "tests/string-op.js/plusNum" } } };
 
-  @Test public void testStringOp() throws IOException, IllegalArgumentException, CancelException {
+  @Test
+  public void testStringOp() throws IOException, IllegalArgumentException, CancelException {
     PropagationCallGraphBuilder B = Util.makeScriptCGBuilder("tests", "string-op.js");
     B.getOptions().setTraceStringConstants(true);
     CallGraph CG = B.makeCallGraph(B.getOptions());
@@ -177,9 +212,11 @@ public abstract class TestSimpleCallGraphShape extends TestJSCallGraphShape {
       new Object[] { ROOT, new String[] { "tests/upward.js" } },
       new Object[] {
           "tests/upward.js",
-          new String[] { "tests/upward.js/Obj/setit", "tests/upward.js/Obj/getit", "tests/upward.js/tester1", "tests/upward.js/tester2" } } };
+          new String[] { "tests/upward.js/Obj/setit", "tests/upward.js/Obj/getit", "tests/upward.js/tester1",
+              "tests/upward.js/tester2" } } };
 
-  @Test public void testUpward() throws IOException, IllegalArgumentException, CancelException {
+  @Test
+  public void testUpward() throws IOException, IllegalArgumentException, CancelException {
     CallGraph CG = Util.makeScriptCG("tests", "upward.js");
     verifyGraphAssertions(CG, assertionsForUpward);
   }
@@ -188,110 +225,269 @@ public abstract class TestSimpleCallGraphShape extends TestJSCallGraphShape {
       new Object[] { ROOT, new String[] { "tests/string-prims.js" } },
       new Object[] { "tests/string-prims.js", new String[] { "prologue.js/stringSplit", "prologue.js/toUpperCase" } } };
 
-  @Test public void testStringPrims() throws IOException, IllegalArgumentException, CancelException {
+  @Test
+  public void testStringPrims() throws IOException, IllegalArgumentException, CancelException {
     PropagationCallGraphBuilder B = Util.makeScriptCGBuilder("tests", "string-prims.js");
     B.getOptions().setTraceStringConstants(true);
     CallGraph CG = B.makeCallGraph(B.getOptions());
     verifyGraphAssertions(CG, assertionsForStringPrims);
   }
-  
-  private static final Object[][] assertionsForNested = new Object[][] {
-    new Object[] { ROOT, new String[] { "tests/nested.js" } },
-    new Object[] { "tests/nested.js", 
-                   new String[] { "tests/nested.js/f", 
-                                  "tests/nested.js/f/ff", 
-                                  "tests/nested.js/f/ff/fff" } 
-    } 
-  };
-  
-  @Test public void testNested() throws IOException, IllegalArgumentException, CancelException {
+
+  private static final Object[][] assertionsForNested = new Object[][] { new Object[] { ROOT, new String[] { "tests/nested.js" } },
+      new Object[] { "tests/nested.js", new String[] { "tests/nested.js/f", "tests/nested.js/f/ff", "tests/nested.js/f/ff/fff" } } };
+
+  @Test
+  public void testNested() throws IOException, IllegalArgumentException, CancelException {
     PropagationCallGraphBuilder B = Util.makeScriptCGBuilder("tests", "nested.js");
     CallGraph CG = B.makeCallGraph(B.getOptions());
     verifyGraphAssertions(CG, assertionsForNested);
   }
 
-  private static final Object[][] assertionsForInstanceof = new Object[][] {
-    new Object[] { ROOT, new String[] { "tests/instanceof.js" } }
-  };
-  
-  @Test public void testInstanceof() throws IOException, IllegalArgumentException, CancelException {
+  private static final Object[][] assertionsForInstanceof = new Object[][] { new Object[] { ROOT,
+      new String[] { "tests/instanceof.js" } } };
+
+  @Test
+  public void testInstanceof() throws IOException, IllegalArgumentException, CancelException {
     PropagationCallGraphBuilder B = Util.makeScriptCGBuilder("tests", "instanceof.js");
     CallGraph CG = B.makeCallGraph(B.getOptions());
     verifyGraphAssertions(CG, assertionsForInstanceof);
   }
 
   /*
-  private static final Object[][] assertionsForWith = new Object[][] {
-    new Object[] { ROOT, new String[] { "tests/with.js" } }
-  };
-  
-  @Test public void testWith() throws IOException, IllegalArgumentException, CancelException {
-    PropagationCallGraphBuilder B = Util.makeScriptCGBuilder("tests", "with.js");
-    CallGraph CG = B.makeCallGraph(B.getOptions());
-    verifyGraphAssertions(CG, assertionsForWith);
-  }
-  */
-  
-  @Test public void testCrash1() throws IOException, IllegalArgumentException, CancelException {
+   * private static final Object[][] assertionsForWith = new Object[][] { new
+   * Object[] { ROOT, new String[] { "tests/with.js" } } };
+   * 
+   * @Test public void testWith() throws IOException, IllegalArgumentException,
+   * CancelException { PropagationCallGraphBuilder B =
+   * Util.makeScriptCGBuilder("tests", "with.js"); CallGraph CG =
+   * B.makeCallGraph(B.getOptions()); verifyGraphAssertions(CG,
+   * assertionsForWith); }
+   */
+
+  @Test
+  public void testCrash1() throws IOException, IllegalArgumentException, CancelException {
     CallGraph CG = Util.makeScriptCG("tests", "crash1.js");
     verifyGraphAssertions(CG, null);
   }
 
-  @Test public void testCrash2() throws IOException, IllegalArgumentException, CancelException {
+  @Test
+  public void testCrash2() throws IOException, IllegalArgumentException, CancelException {
     CallGraph CG = Util.makeScriptCG("tests", "crash2.js");
     verifyGraphAssertions(CG, null);
   }
-  
-  @Test public void testLexicalCtor() throws IOException, IllegalArgumentException, CancelException {
+
+  @Test
+  public void testLexicalCtor() throws IOException, IllegalArgumentException, CancelException {
     CallGraph CG = Util.makeScriptCG("tests", "lexical-ctor.js");
     verifyGraphAssertions(CG, null);
   }
 
   private static final Object[][] assertionsForMultivar = new Object[][] {
-    new Object[] { ROOT, new String[] { "tests/multivar.js" } },
-    new Object[] { "tests/multivar.js", 
-        new String[] { "tests/multivar.js/a",
-                       "tests/multivar.js/bf",
-                       "tests/multivar.js/c"
-        }
-    }
-  };
+      new Object[] { ROOT, new String[] { "tests/multivar.js" } },
+      new Object[] { "tests/multivar.js", new String[] { "tests/multivar.js/a", "tests/multivar.js/bf", "tests/multivar.js/c" } } };
 
-  @Test public void testMultivar() throws IOException, IllegalArgumentException, CancelException {
+  @Test
+  public void testMultivar() throws IOException, IllegalArgumentException, CancelException {
     CallGraph CG = Util.makeScriptCG("tests", "multivar.js");
     verifyGraphAssertions(CG, assertionsForMultivar);
   }
 
   private static final Object[][] assertionsForPrototypeContamination = new Object[][] {
-    new Object[] { ROOT, new String[] { "tests/prototype_contamination_bug.js" } },
-    new Object[] { "suffix:test1", 
-        new String[] { "suffix:foo_of_A"} },
-    new Object[] { "suffix:test2", 
-        new String[] { "suffix:foo_of_B"} }
-  };
+      new Object[] { ROOT, new String[] { "tests/prototype_contamination_bug.js" } },
+      new Object[] { "suffix:test1", new String[] { "suffix:foo_of_A" } },
+      new Object[] { "suffix:test2", new String[] { "suffix:foo_of_B" } } };
 
-  @Test public void testProtoypeContamination() throws IOException, IllegalArgumentException, CancelException {
+  @Test
+  public void testProtoypeContamination() throws IOException, IllegalArgumentException, CancelException {
     CallGraph CG = Util.makeScriptCG("tests", "prototype_contamination_bug.js");
     verifyGraphAssertions(CG, assertionsForPrototypeContamination);
     verifyNoEdges(CG, "suffix:test1", "suffix:foo_of_B");
     verifyNoEdges(CG, "suffix:test2", "suffix:foo_of_A");
   }
-  
-  @Test public void testStackOverflowOnSsaConversionBug() throws IOException, IllegalArgumentException, CancelException {
+
+  @Test
+  public void testStackOverflowOnSsaConversionBug() throws IOException, IllegalArgumentException, CancelException {
     Util.makeScriptCG("tests", "stack_overflow_on_ssa_conversion.js");
     // all we need is for it to finish building CG successfully.
   }
 
-  @Test public void testExtJSSwitch() throws IOException, IllegalArgumentException, CancelException {
+  @Test
+  public void testExtJSSwitch() throws IOException, IllegalArgumentException, CancelException {
     Util.makeScriptCG("tests", "extjs_switch.js");
     // all we need is for it to finish building CG successfully.
   }
 
-  @Test public void testFunctionDotCall() throws IOException, IllegalArgumentException, CancelException {
-    Util.makeScriptCG("tests", "function_call.js");
-    // TODO assert that foo() is reachable
+
+  @Test
+  public void testFunctionDotCall() throws IOException, IllegalArgumentException, CancelException {
+    CallGraph cg = Util.makeScriptCG("tests", "function_call.js");
+    for (CGNode n : cg) {
+      if (n.getMethod().getName().toString().equals("call4")) {
+        Assert.assertEquals(2, cg.getSuccNodeCount(n));
+        // ugh
+        List<CGNode> succs = Iterator2Collection.toList(cg.getSuccNodes(n));
+        Assert
+            .assertEquals(
+                "[Node: <Code body of function Ltests/function_call.js/foo> Context: Everywhere, Node: <Code body of function Ltests/function_call.js/bar> Context: Everywhere]",
+                succs.toString());
+      }
+    }
   }
 
+  private static final Object[][] assertionsForFunctionApply = new Object[][] {
+    new Object[] { ROOT, new String[] { "tests/function_apply.js" } },
+    new Object[] { "suffix:function_apply.js", new String[] { "suffix:theOne" } }, 
+    new Object[] { "suffix:function_apply.js", new String[] { "suffix:theTwo" } } };
+
+
+  @Test
+  public void testFunctionDotApply() throws IOException, IllegalArgumentException, CancelException {
+    CallGraph CG = Util.makeScriptCG("tests", "function_apply.js");
+    verifyGraphAssertions(CG, assertionsForFunctionApply);
+  }
+
+  private static final Object[][] assertionsForFunctionApply2 = new Object[][] {
+    new Object[] { ROOT, new String[] { "tests/function_apply2.js" } },
+    new Object[] { "suffix:function_apply2.js", new String[] { "suffix:theThree" } } }; 
+
+  @Test
+  public void testFunctionDotApply2() throws IOException, IllegalArgumentException, CancelException {
+    CallGraph CG = Util.makeScriptCG("tests", "function_apply2.js");
+    verifyGraphAssertions(CG, assertionsForFunctionApply2);
+  }
+  
+  private static final Object[][] assertionsForWrap1 = new Object[][] {
+    new Object[] { ROOT, new String[] { "tests/wrap1.js" } },
+    new Object[] { "suffix:wrap1.js", new String[] { "suffix:i_am_reachable" } } };
+
+  @Test
+  public void testWrap1() throws IllegalArgumentException, IOException, CancelException {
+    CallGraph CG = Util.makeScriptCG("tests", "wrap1.js");
+    verifyGraphAssertions(CG, assertionsForWrap1);
+  }
+
+  private static final Object[][] assertionsForWrap2 = new Object[][] {
+    new Object[] { ROOT, new String[] { "tests/wrap2.js" } },
+    new Object[] { "suffix:wrap2.js", new String[] { "suffix:i_am_reachable" } } };
+
+  @Test
+  public void testWrap2() throws IllegalArgumentException, IOException, CancelException {
+    CallGraph CG = Util.makeScriptCG("tests", "wrap2.js");
+    verifyGraphAssertions(CG, assertionsForWrap2);
+  }
+
+  private static final Object[][] assertionsForWrap3 = new Object[][] {
+    new Object[] { ROOT, new String[] { "tests/wrap3.js" } },
+    new Object[] { "suffix:wrap3.js", new String[] { "suffix:i_am_reachable" } } };
+
+  @Test
+  public void testWrap3() throws IllegalArgumentException, IOException, CancelException {
+    CallGraph CG = Util.makeScriptCG("tests", "wrap3.js");
+    verifyGraphAssertions(CG, assertionsForWrap3);
+  }
+
+  private static final Object[][] assertionsForComplexCall = new Object[][] {
+    new Object[] { ROOT, new String[] { "tests/complex_call.js" } },
+    new Object[] { "suffix:call.js", new String[] { "suffix:f3" } } };
+
+  @Test
+  public void testComplexCall() throws IOException, IllegalArgumentException, CancelException {
+    CallGraph CG = Util.makeScriptCG("tests", "complex_call.js");
+    for(CGNode nd : CG)
+      System.out.println(nd);
+    verifyGraphAssertions(CG, assertionsForComplexCall);
+  }
+
+
+  private static final Object[][] assertionsForGlobalObj = new Object[][] {
+    new Object[] { ROOT, new String[] { "tests/global_object.js" } },
+    new Object[] { "suffix:global_object.js", new String[] { "suffix:biz" } } };
+
+  @Test
+  public void testGlobalObjPassing() throws IOException, IllegalArgumentException, CancelException {
+    CallGraph CG = Util.makeScriptCG("tests", "global_object.js");
+    verifyGraphAssertions(CG, assertionsForGlobalObj);
+  }
+  
+  private static final Object[][] assertionsForGlobalObj2 = new Object[][] {
+    new Object[] { ROOT, new String[] { "tests/global_object2.js" } },
+    new Object[] { "suffix:global_object2.js", new String[] { "suffix:foo" } } };
+
+  @Test
+  public void testGlobalObj2() throws IOException, IllegalArgumentException, CancelException {
+    CallGraph CG = Util.makeScriptCG("tests", "global_object2.js");
+    verifyGraphAssertions(CG, assertionsForGlobalObj2);
+  }
+ 
+  
+  private static final Object[][] assertionsForReturnThis = new Object[][] {
+    new Object[] { ROOT, new String[] { "tests/return_this.js" } },
+    new Object[] { "suffix:return_this.js", new String[] { "suffix:foo" } }, 
+    new Object[] { "suffix:return_this.js", new String[] { "suffix:bar" } } };
+
+  @Test
+  public void testReturnThis() throws IOException, IllegalArgumentException, CancelException {
+    CallGraph CG = Util.makeScriptCG("tests", "return_this.js");
+    verifyGraphAssertions(CG, assertionsForReturnThis);
+  }
+  
+  private static final Object[][] assertionsForReturnThis2 = new Object[][] {
+    new Object[] { ROOT, new String[] { "tests/return_this2.js" } },
+    new Object[] { "suffix:return_this2.js", new String[] { "suffix:A" } }, 
+    new Object[] { "suffix:return_this2.js", new String[] { "suffix:foo" } }, 
+    new Object[] { "suffix:return_this2.js", new String[] { "suffix:test1" } }, 
+    new Object[] { "suffix:return_this2.js", new String[] { "suffix:test2" } }, 
+    new Object[] { "suffix:test1", new String[] { "suffix:bar1" } }, 
+    new Object[] { "suffix:test2", new String[] { "suffix:bar2" } } 
+  };
+  // when using the ObjectSensitivityContextSelector, we additionally know that test1 does not call bar2,
+  // and test2 does not call bar1
+
+  @Test
+  public void testReturnThis2() throws IOException, IllegalArgumentException, CancelException {
+    CallGraph CG = Util.makeScriptCG("tests", "return_this2.js");
+    verifyGraphAssertions(CG, assertionsForReturnThis2);
+  }
+  
+  private static final Object[][] assertionsForArguments = new Object[][] {
+    new Object[] { ROOT, new String[] { "tests/arguments.js" } },
+    new Object[] { "suffix:arguments.js", new String[] { "suffix:f" } },
+    new Object[] { "suffix:f", new String[] { "suffix:g3" } } // but neither "suffix:g1" nor "suffix:g2"
+  };
+  
+  @Test
+  public void testArguments() throws IOException, IllegalArgumentException, CancelException {
+    CallGraph CG = Util.makeScriptCG("tests", "arguments.js");
+    verifyGraphAssertions(CG, assertionsForArguments);
+  }
+  
+  private static final Object[][] assertionsForFunctionIsAFunction = new Object[][] {
+    new Object[] { ROOT, new String[] { "tests/Function_is_a_function.js" } },
+    new Object[] { "suffix:Function_is_a_function.js", new String[] { "suffix:functionCall" } } }; 
+
+  @Test
+  public void testFunctionIsAFunction() throws IOException, IllegalArgumentException, CancelException {
+    CallGraph CG = Util.makeScriptCG("tests", "Function_is_a_function.js");
+    verifyGraphAssertions(CG, assertionsForFunctionIsAFunction);
+  }
+  
+  private static final Object[][] assertionsForLexicalBroken = new Object[][] {
+    new Object[] { ROOT, new String[] { "tests/lexical_broken.js" } },
+    new Object[] { "suffix:lexical_broken.js", new String[] { "suffix:f" } },
+    new Object[] { "suffix:f", new String[] { "suffix:g" } }
+  };
+  
+  @Test
+  public void testLexicalBroken() throws IOException, IllegalArgumentException, CancelException {
+    CallGraph CG = Util.makeScriptCG("tests", "lexical_broken.js");
+    verifyGraphAssertions(CG, assertionsForLexicalBroken);
+  }
+  
+  @Test
+  public void testDeadPhi() throws IllegalArgumentException, IOException, CancelException {
+    Util.makeScriptCG("tests", "dead_phi.js");
+  }
+  
   protected IVector<Set<Pair<CGNode, Integer>>> computeIkIdToVns(PointerAnalysis pa) {
 
     // Created by reversing the points to mapping for local pointer keys.

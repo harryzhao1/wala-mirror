@@ -124,10 +124,13 @@ Function.prototype = {
   }
 };
 
+Function.__proto__ = Function.prototype;
 
 /************************************************************************/
 /* Array properties, see spec 15.4					*/
 /************************************************************************/
+
+Array.__proto__ = Function.prototype;
 
 Array.prototype = {
 
@@ -182,7 +185,7 @@ Array.prototype = {
   },
 
   push: function push () {
-    var n = this.length
+    var n = this.length;
     for(var i = 0; i < arguments.length; i++) {
       this[ n++ ] = arguments[i];
     }
@@ -247,6 +250,8 @@ Array.prototype = {
 /************************************************************************/
 /* String properties, see spec 15.4					*/
 /************************************************************************/
+
+String.__proto__ = Function.prototype;
 
 String.prototype = {
 
@@ -323,6 +328,8 @@ String.prototype = {
 /************************************************************************/
 /* Number properties, see spec 15.7					*/
 /************************************************************************/
+
+Number.__proto__ = Function.prototype;
 
 Number.prototype = {
 
@@ -411,6 +418,8 @@ Math = {
 /************************************************************************/
 /* RegExp properties, see spec 15.10					*/
 /************************************************************************/
+
+RegExp.__proto__ = Function.prototype;
 
 RegExp.prototype = {
 

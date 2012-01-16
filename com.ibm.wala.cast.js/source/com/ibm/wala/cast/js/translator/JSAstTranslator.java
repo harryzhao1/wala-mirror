@@ -361,7 +361,7 @@ public class JSAstTranslator extends AstTranslator {
     doNewObject(context, null, tempVal, "Array", null);
     CAstSymbol args = new CAstSymbolImpl("arguments");
     context.currentScope().declare(args, tempVal);
-    context.cfg().addInstruction(((JSInstructionFactory)insts).PutInstruction(context.cfg().getCurrentInstruction(), 1, tempVal, "arguments"));
+    //context.cfg().addInstruction(((JSInstructionFactory)insts).PutInstruction(context.cfg().getCurrentInstruction(), 1, tempVal, "arguments"));
   }
 
   protected boolean doVisit(CAstNode n, Context cntxt, CAstVisitor visitor) {

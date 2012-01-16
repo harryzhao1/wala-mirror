@@ -1,8 +1,6 @@
-package com.ibm.wala.cast.test;
+package com.ibm.wala.cast.js.util;
 
 import java.util.Iterator;
-
-import junit.framework.Assert;
 
 import com.ibm.wala.cast.loader.CAstAbstractLoader;
 import com.ibm.wala.classLoader.IClassLoader;
@@ -35,8 +33,8 @@ public class Util {
     }
     if (message != null) {
       message.append("end of front end errors\n");
+      throw new AssertionError(String.valueOf(message));
     }
-    Assert.assertTrue(String.valueOf(message), message == null);
   }
   
 
