@@ -62,9 +62,9 @@ public class JSAstTranslator extends AstTranslator {
   }
 
   protected boolean useLocalValuesForLexicalVars() {
-    return true;
+    return !AstTranslator.NEW_LEXICAL;
   }
-
+  
   protected TypeReference defaultCatchType() {
     return JavaScriptTypes.Root;
   }

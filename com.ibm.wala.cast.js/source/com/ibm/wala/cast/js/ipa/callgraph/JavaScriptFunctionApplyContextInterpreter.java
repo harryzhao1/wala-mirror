@@ -1,7 +1,6 @@
 package com.ibm.wala.cast.js.ipa.callgraph;
 
 import com.ibm.wala.cast.ipa.callgraph.AstContextInsensitiveSSAContextInterpreter;
-import com.ibm.wala.cast.js.ipa.callgraph.JavaScriptFunctionApplyContextSelector.BooleanContextItem;
 import com.ibm.wala.cast.js.ipa.summaries.JavaScriptSummarizedFunction;
 import com.ibm.wala.cast.js.ipa.summaries.JavaScriptSummary;
 import com.ibm.wala.cast.js.loader.JSCallSiteReference;
@@ -11,9 +10,12 @@ import com.ibm.wala.classLoader.IClass;
 import com.ibm.wala.ipa.callgraph.AnalysisCache;
 import com.ibm.wala.ipa.callgraph.AnalysisOptions;
 import com.ibm.wala.ipa.callgraph.CGNode;
+import com.ibm.wala.ipa.callgraph.ContextItem;
+import com.ibm.wala.ssa.ConstantValue;
 import com.ibm.wala.ssa.DefUse;
 import com.ibm.wala.ssa.IR;
 import com.ibm.wala.types.MethodReference;
+import com.ibm.wala.types.TypeName;
 
 /**
  * TODO cache generated IRs
@@ -24,20 +26,25 @@ import com.ibm.wala.types.MethodReference;
  */
 public class JavaScriptFunctionApplyContextInterpreter extends AstContextInsensitiveSSAContextInterpreter {
 
+  private static final TypeName APPLY_TYPE_NAME = TypeName.findOrCreate("Lprologue.js/functionApply");
+
   public JavaScriptFunctionApplyContextInterpreter(AnalysisOptions options, AnalysisCache cache) {
     super(options, cache);
   }
 
   @Override
   public boolean understands(CGNode node) {
-    return node.getContext().get(JavaScriptFunctionApplyContextSelector.APPLY_NON_NULL_ARGS) != null;
+    return node.getMethod().getDeclaringClass().getName().equals(APPLY_TYPE_NAME);
   }
 
   @Override
   public IR getIR(CGNode node) {
     assert understands(node);
-    BooleanContextItem isNonNullArray = (BooleanContextItem) node.getContext().get(JavaScriptFunctionApplyContextSelector.APPLY_NON_NULL_ARGS);
-    if (isNonNullArray.val) {
+    @SuppressWarnings("unchecked")
+    ContextItem.Value<Boolean> isNonNullArray = (ContextItem.Value<Boolean>) node.getContext().get(JavaScriptFunctionApplyContextSelector.APPLY_NON_NULL_ARGS);
+    // isNonNullArray can be null if, e.g., due to recursion bounding we have no
+    // information on the arguments parameter
+    if (isNonNullArray == null || isNonNullArray.getValue()) {
       return makeIRForArgList(node);
     } else {
       return makeIRForNoArgList(node);
@@ -80,33 +87,59 @@ public class JavaScriptFunctionApplyContextInterpreter extends AstContextInsensi
     int nargs = 4;
     JavaScriptSummary S = new JavaScriptSummary(ref, nargs);
 
-    // read an arbitrary property name via EachElementGet
-    int curValNum = nargs + 2;
-    int eachElementGetResult = curValNum++;
-    S.addStatement(insts.EachElementGetInstruction(S.getNextProgramCounter(), eachElementGetResult, 4));
-    S.getNextProgramCounter();
-    // read value from the arbitrary property name
-    int propertyReadResult = curValNum++;
-    S.addStatement(insts.PropertyRead(S.getNextProgramCounter(), propertyReadResult, 4, eachElementGetResult));
-    S.getNextProgramCounter();
-
     int numParamsToPass = 10;
-    CallSiteReference cs = new JSCallSiteReference(S.getNextProgramCounter());
-    int[] params = new int[numParamsToPass + 1];
+    int[] paramsToPassToInvoked = new int[numParamsToPass + 1];
     // pass the 'this' argument first
-    params[0] = 3;
-    for (int i = 1; i < params.length; i++) {
-      params[i] = propertyReadResult;
-    }
+    paramsToPassToInvoked[0] = 3;
+
+//    int curValNum = passArbitraryPropertyValAsParams(insts, nargs, S, paramsToPassToInvoked);
+    int curValNum = passActualPropertyValsAsParams(insts, nargs, S, paramsToPassToInvoked);
+    
+    CallSiteReference cs = new JSCallSiteReference(S.getNextProgramCounter());
+
     // function being invoked is in v2
     int resultVal = curValNum++;
     int excVal = curValNum++;
-    S.addStatement(insts.Invoke(S.getNextProgramCounter(), 2, resultVal, params, excVal, cs));
-    
+    S.addStatement(insts.Invoke(S.getNextProgramCounter(), 2, resultVal, paramsToPassToInvoked, excVal, cs));
+
     S.addStatement(insts.ReturnInstruction(S.getNextProgramCounter(), resultVal, false));
 
     JavaScriptSummarizedFunction t = new JavaScriptSummarizedFunction(ref, S, declaringClass);
     return t.makeIR(node.getContext(), null);
+  }
+
+  @SuppressWarnings("unused")
+  private int passArbitraryPropertyValAsParams(JSInstructionFactory insts, int nargs, JavaScriptSummary S, int[] paramsToPassToInvoked) {
+    // read an arbitrary property name via EachElementGet
+    int curValNum = nargs + 2;
+    int eachElementGetResult = curValNum++;
+    S.addStatement(insts.EachElementGetInstruction(S.getNextProgramCounter(), eachElementGetResult, 4));
+    // read value from the arbitrary property name
+    int propertyReadResult = curValNum++;
+    S.addStatement(insts.PropertyRead(S.getNextProgramCounter(), propertyReadResult, 4, eachElementGetResult));
+    for (int i = 1; i < paramsToPassToInvoked.length; i++) {
+      paramsToPassToInvoked[i] = propertyReadResult;
+    }
+    return curValNum;
+  }
+  
+  private int passActualPropertyValsAsParams(JSInstructionFactory insts, int nargs, JavaScriptSummary S, int[] paramsToPassToInvoked) {
+    // read an arbitrary property name via EachElementGet
+    int curValNum = nargs + 2;
+    for (int i = 1; i < paramsToPassToInvoked.length; i++) {
+      // create a String constant for i-1
+      final int constVN = curValNum++;
+      // the commented line is correct, but it doesn't work because
+      // of our broken handling of int constants as properties.
+      // TODO fix property handling, and then fix this
+//      S.addConstant(constVN, new ConstantValue(Integer.toString(i-1)));
+      S.addConstant(constVN, new ConstantValue(i-1));
+      int propertyReadResult = curValNum++;
+      // 4 is position of arguments array
+      S.addStatement(insts.PropertyRead(S.getNextProgramCounter(), propertyReadResult, 4, constVN));
+      paramsToPassToInvoked[i] = propertyReadResult;
+    }
+    return curValNum;
   }
 
   private IR makeIRForNoArgList(CGNode node) {

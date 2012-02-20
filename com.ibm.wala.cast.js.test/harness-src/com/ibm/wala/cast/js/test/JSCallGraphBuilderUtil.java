@@ -41,22 +41,51 @@ import com.ibm.wala.ssa.IRFactory;
 import com.ibm.wala.util.CancelException;
 
 /**
- * TODO this class is a mess.  rewrite.
+ * TODO this class is a mess. rewrite.
  */
-public class Util extends com.ibm.wala.cast.js.ipa.callgraph.Util {
+public class JSCallGraphBuilderUtil extends com.ibm.wala.cast.js.ipa.callgraph.JSCallGraphUtil {
 
-  public static JSCFABuilder makeScriptCGBuilder(String dir, String name, boolean useOneCFA, IRFactory irFactory) throws IOException {
-    JavaScriptLoaderFactory loaders = Util.makeLoaders();
+  public static enum CGBuilderType {
+    ZERO_ONE_CFA(false, false, true), ZERO_ONE_CFA_NO_CALL_APPLY(false, false, false), ZERO_ONE_CFA_PRECISE_LEXICAL(false, true,
+        true), ONE_CFA(true, false, true), ONE_CFA_PRECISE_LEXICAL(true, true, true);
+
+    private final boolean useOneCFA;
+
+    private final boolean usePreciseLexical;
+
+    private final boolean handleCallApply;
+
+    private CGBuilderType(boolean useOneCFA, boolean usePreciseLexical, boolean handleCallApply) {
+      this.useOneCFA = useOneCFA;
+      this.usePreciseLexical = usePreciseLexical;
+      this.handleCallApply = handleCallApply;
+    }
+
+    public boolean useOneCFA() {
+      return useOneCFA;
+    }
+
+    public boolean usePreciseLexical() {
+      return usePreciseLexical;
+    }
+    public boolean handleCallApply() {
+      return handleCallApply;
+    }
+
+  }
+
+  public static JSCFABuilder makeScriptCGBuilder(String dir, String name, CGBuilderType builderType) throws IOException {
+    JavaScriptLoaderFactory loaders = JSCallGraphBuilderUtil.makeLoaders();
 
     AnalysisScope scope = makeScriptScope(dir, name, loaders);
 
-    return makeCG(loaders, scope, useOneCFA, true, irFactory);
+    return makeCG(loaders, scope, builderType, AstIRFactory.makeDefaultFactory());
   }
 
   static AnalysisScope makeScriptScope(String dir, String name, JavaScriptLoaderFactory loaders) throws IOException {
-    URL script = Util.class.getClassLoader().getResource(dir + File.separator + name);
+    URL script = JSCallGraphBuilderUtil.class.getClassLoader().getResource(dir + File.separator + name);
     if (script == null) {
-      script = Util.class.getClassLoader().getResource(dir + "/" + name);
+      script = JSCallGraphBuilderUtil.class.getClassLoader().getResource(dir + "/" + name);
     }
     assert script != null : "cannot find " + dir + " and " + name;
 
@@ -66,48 +95,42 @@ public class Util extends com.ibm.wala.cast.js.ipa.callgraph.Util {
     } else {
       scope = makeScope(new SourceFileModule[] { makeSourceModule(script, dir, name) }, loaders, JavaScriptLoader.JS);
     }
+
     return scope;
   }
 
   public static JSCFABuilder makeScriptCGBuilder(String dir, String name) throws IOException {
-    return makeScriptCGBuilder(dir, name, false, AstIRFactory.makeDefaultFactory());
+    return makeScriptCGBuilder(dir, name, CGBuilderType.ZERO_ONE_CFA);
   }
 
   public static CallGraph makeScriptCG(String dir, String name) throws IOException, IllegalArgumentException, CancelException {
-    return makeScriptCG(dir, name, AstIRFactory.makeDefaultFactory());
+    return makeScriptCG(dir, name, CGBuilderType.ZERO_ONE_CFA);
   }
 
-  public static CallGraph makeScriptCG(String dir, String name, boolean useOneCFA) throws IOException, IllegalArgumentException, CancelException {
-    return makeScriptCG(dir, name, useOneCFA, AstIRFactory.makeDefaultFactory());
-  }
-
-  public static CallGraph makeScriptCG(String dir, String name, IRFactory irFactory) throws IOException, IllegalArgumentException, CancelException {
-    return makeScriptCG(dir, name, false, irFactory);
-  }
-
-  public static CallGraph makeScriptCG(String dir, String name, boolean useOneCFA, IRFactory irFactory) throws IOException, IllegalArgumentException,
-      CancelException {
-    PropagationCallGraphBuilder b = makeScriptCGBuilder(dir, name, useOneCFA, irFactory);
+  public static CallGraph makeScriptCG(String dir, String name, CGBuilderType builderType) throws IOException,
+      IllegalArgumentException, CancelException {
+    PropagationCallGraphBuilder b = makeScriptCGBuilder(dir, name, builderType);
     CallGraph CG = b.makeCallGraph(b.getOptions());
     dumpCG(b.getPointerAnalysis(), CG);
     return CG;
   }
 
-  public static CallGraph makeScriptCG(SourceModule[] scripts, boolean useOneCFA, IRFactory irFactory) throws IOException, IllegalArgumentException,
+  public static CallGraph makeScriptCG(SourceModule[] scripts, CGBuilderType builderType, IRFactory irFactory) throws IOException, IllegalArgumentException,
       CancelException {
-    PropagationCallGraphBuilder b = makeCGBuilder(makeLoaders(), scripts, useOneCFA, true, irFactory);
+    PropagationCallGraphBuilder b = makeCGBuilder(makeLoaders(), scripts, builderType, irFactory);
     CallGraph CG = b.makeCallGraph(b.getOptions());
     dumpCG(b.getPointerAnalysis(), CG);
     return CG;
   }
 
   public static JSCFABuilder makeHTMLCGBuilder(URL url) throws IOException {
-    return makeHTMLCGBuilder(url, true);
+    return makeHTMLCGBuilder(url, CGBuilderType.ZERO_ONE_CFA);
   }
-  public static JSCFABuilder makeHTMLCGBuilder(URL url, boolean handleCallApply) throws IOException {
+
+  public static JSCFABuilder makeHTMLCGBuilder(URL url, CGBuilderType builderType) throws IOException {
     JavaScriptLoader.addBootstrapFile(WebUtil.preamble);
     Set<MappedSourceModule> script = WebUtil.extractScriptFromHTML(url);
-    JSCFABuilder builder = makeCGBuilder(new WebPageLoaderFactory(translatorFactory, preprocessor), script.toArray(new SourceModule[script.size()]), false, handleCallApply, AstIRFactory.makeDefaultFactory());
+    JSCFABuilder builder = makeCGBuilder(new WebPageLoaderFactory(translatorFactory, preprocessor), script.toArray(new SourceModule[script.size()]), builderType, AstIRFactory.makeDefaultFactory());
     builder.setBaseURL(url);
     return builder;
   }
@@ -119,28 +142,29 @@ public class Util extends com.ibm.wala.cast.js.ipa.callgraph.Util {
     return CG;
   }
 
-  public static CallGraph makeHTMLCG(URL url, boolean handleCallApply) throws IOException, IllegalArgumentException,
+  public static CallGraph makeHTMLCG(URL url, CGBuilderType builderType) throws IOException, IllegalArgumentException,
       CancelException {
-    PropagationCallGraphBuilder b = makeHTMLCGBuilder(url, handleCallApply);
+    PropagationCallGraphBuilder b = makeHTMLCGBuilder(url, builderType);
     CallGraph CG = b.makeCallGraph(b.getOptions());
     return CG;
   }
 
-  public static JSCFABuilder makeCGBuilder(JavaScriptLoaderFactory loaders, SourceModule[] scripts, boolean useOneCFA, boolean handleCallApply, IRFactory irFactory) throws IOException {
+  public static JSCFABuilder makeCGBuilder(JavaScriptLoaderFactory loaders, SourceModule[] scripts, CGBuilderType builderType, IRFactory irFactory) throws IOException {
     AnalysisScope scope = makeScope(scripts, loaders, JavaScriptLoader.JS);
-    return makeCG(loaders, scope, useOneCFA, handleCallApply, irFactory);
+    return makeCG(loaders, scope, builderType, irFactory);
   }
 
-  protected static JSCFABuilder makeCG(JavaScriptLoaderFactory loaders, AnalysisScope scope, boolean useOneCFA, boolean handleCallApply, IRFactory irFactory) throws IOException {
+  protected static JSCFABuilder makeCG(JavaScriptLoaderFactory loaders, AnalysisScope scope, CGBuilderType builderType, IRFactory irFactory) throws IOException {
     try {
       IClassHierarchy cha = makeHierarchy(scope, loaders);
       com.ibm.wala.cast.js.util.Util.checkForFrontEndErrors(cha);
       Iterable<Entrypoint> roots = makeScriptRoots(cha);
       JSAnalysisOptions options = makeOptions(scope, cha, roots);
-      options.setHandleCallApply(handleCallApply);
+      options.setHandleCallApply(builderType.handleCallApply());
+      options.setUsePreciseLexical(builderType.usePreciseLexical());
       AnalysisCache cache = makeCache(irFactory);
-
-      JSCFABuilder builder = new JSZeroOrOneXCFABuilder(cha, options, cache, null, null, ZeroXInstanceKeys.ALLOCATIONS, useOneCFA);
+      JSCFABuilder builder = new JSZeroOrOneXCFABuilder(cha, options, cache, null, null, ZeroXInstanceKeys.ALLOCATIONS,
+          builderType.useOneCFA());
 
       return builder;
     } catch (ClassHierarchyException e) {

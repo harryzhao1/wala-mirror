@@ -50,7 +50,7 @@ import com.ibm.wala.types.MethodReference;
 import com.ibm.wala.types.TypeName;
 import com.ibm.wala.types.TypeReference;
 
-public class Util extends com.ibm.wala.cast.ipa.callgraph.Util {
+public class JSCallGraphUtil extends com.ibm.wala.cast.ipa.callgraph.CAstCallGraphUtil {
 
   private static final boolean DEBUG = false;
 
@@ -70,7 +70,7 @@ public class Util extends com.ibm.wala.cast.ipa.callgraph.Util {
    * {@link #makeLoaders()}.
    */
   public static void setTranslatorFactory(JavaScriptTranslatorFactory translatorFactory) {
-    Util.translatorFactory = translatorFactory;
+    JSCallGraphUtil.translatorFactory = translatorFactory;
   }
 
   public static JavaScriptTranslatorFactory getTranslatorFactory() {
@@ -78,7 +78,7 @@ public class Util extends com.ibm.wala.cast.ipa.callgraph.Util {
   }
   
   public static void setPreprocessor(CAstRewriterFactory preprocessor) {
-    Util.preprocessor = preprocessor;
+    JSCallGraphUtil.preprocessor = preprocessor;
   }
 
   public static JSAnalysisOptions makeOptions(AnalysisScope scope, IClassHierarchy cha, Iterable<Entrypoint> roots) {
@@ -141,12 +141,11 @@ public class Util extends com.ibm.wala.cast.ipa.callgraph.Util {
    * @param cl
    * @param fileName
    * @param url
-   * @param file
    * @return The set of class names that where defined in the CHA as a result
    *         loading process.
    * @throws IOException
    */
-  public static Set<String> loadAdditionalFile(IClassHierarchy cha, JavaScriptLoader cl, String fileName, URL url, String file)
+  public static Set<String> loadAdditionalFile(IClassHierarchy cha, JavaScriptLoader cl, String fileName, URL url)
       throws IOException {
     try {
       SourceURLModule M = new SourceURLModule(url);

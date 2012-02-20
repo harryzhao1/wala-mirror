@@ -32,7 +32,7 @@ import com.ibm.wala.ssa.IR;
 import com.ibm.wala.ssa.IRFactory;
 import com.ibm.wala.util.debug.Assertions;
 
-public class Util {
+public class CAstCallGraphUtil {
 
   /**
    * flag to prevent dumping of verbose call graph / pointer analysis output
@@ -119,7 +119,7 @@ public class Util {
         System.err.print(getShortName(ns.next()));
       }
       System.err.println("]");
-      System.err.println("\nIR of node " + N.getGraphNodeId());
+      System.err.println("\nIR of node " + N.getGraphNodeId() + ", context " + N.getContext());
       IR ir = N.getIR();
       if (ir != null) {
         System.err.println(ir);
@@ -144,13 +144,13 @@ public class Util {
     for (int i = 0; i < fileNameArgs.length; i++) {
       if (new File(fileNameArgs[i]).exists()) {
         try {
-          fileNames[i] = Util.makeSourceModule(new File(fileNameArgs[i]).toURI().toURL(), fileNameArgs[i]);
+          fileNames[i] = CAstCallGraphUtil.makeSourceModule(new File(fileNameArgs[i]).toURI().toURL(), fileNameArgs[i]);
         } catch (MalformedURLException e) {
           Assertions.UNREACHABLE(e.toString());
         }
       } else {
-        URL url = Util.class.getClassLoader().getResource(fileNameArgs[i]);
-        fileNames[i] = Util.makeSourceModule(url, fileNameArgs[i]);
+        URL url = CAstCallGraphUtil.class.getClassLoader().getResource(fileNameArgs[i]);
+        fileNames[i] = CAstCallGraphUtil.makeSourceModule(url, fileNameArgs[i]);
       }
     }
 

@@ -11,12 +11,16 @@ import junit.framework.Assert;
 
 import org.eclipse.core.runtime.NullProgressMonitor;
 
+import com.ibm.wala.cast.ir.translator.AstTranslator;
 import com.ibm.wala.cast.js.ipa.callgraph.ForInContextSelector;
 import com.ibm.wala.cast.js.ipa.callgraph.JSCFABuilder;
 import com.ibm.wala.cast.js.ipa.callgraph.JavaScriptFunctionDotCallTargetSelector;
+import com.ibm.wala.cast.js.ipa.callgraph.RecursionCheckContextSelector;
 import com.ibm.wala.cast.js.ipa.callgraph.correlations.extraction.CorrelatedPairExtractorFactory;
-import com.ibm.wala.cast.js.test.Util;
+import com.ibm.wala.cast.js.test.JSCallGraphBuilderUtil;
+import com.ibm.wala.cast.js.test.JSCallGraphBuilderUtil.CGBuilderType;
 import com.ibm.wala.cast.js.translator.CAstRhinoTranslatorFactory;
+import com.ibm.wala.ipa.callgraph.CGNode;
 import com.ibm.wala.ipa.callgraph.CallGraph;
 import com.ibm.wala.ipa.callgraph.CallGraphBuilderCancelException;
 import com.ibm.wala.ipa.callgraph.propagation.PointerAnalysis;
@@ -67,7 +71,7 @@ public class HTMLCGBuilder {
 	 * @throws IOException 
 	 * @throws ClassHierarchyException 
 	 */
-	public static CGBuilderResult buildHTMLCG(String src, int timeout, boolean automated_extraction) 
+	public static CGBuilderResult buildHTMLCG(String src, int timeout, boolean automated_extraction, CGBuilderType builderType) 
 			throws ClassHierarchyException, IOException {
 		CGBuilderResult res = new CGBuilderResult();
 		URL url = null;
@@ -76,14 +80,21 @@ public class HTMLCGBuilder {
 		} catch (MalformedURLException e1) {
 			Assert.fail("Could not find page to analyse: " + src);
 		}
-		com.ibm.wala.cast.js.ipa.callgraph.Util.setTranslatorFactory(new CAstRhinoTranslatorFactory());
+		com.ibm.wala.cast.js.ipa.callgraph.JSCallGraphUtil.setTranslatorFactory(new CAstRhinoTranslatorFactory());
 		if(automated_extraction)
-			com.ibm.wala.cast.js.ipa.callgraph.Util.setPreprocessor(new CorrelatedPairExtractorFactory(new CAstRhinoTranslatorFactory(), url));
+			com.ibm.wala.cast.js.ipa.callgraph.JSCallGraphUtil.setPreprocessor(new CorrelatedPairExtractorFactory(new CAstRhinoTranslatorFactory(), url));
 		JSCFABuilder builder = null;
 		try {
-			builder = Util.makeHTMLCGBuilder(url);
+			builder = JSCallGraphBuilderUtil.makeHTMLCGBuilder(url, builderType);
 			builder.setContextSelector(new ForInContextSelector(2, builder.getContextSelector()));
 			builder.setContextSelector(new ForInContextSelector(3, builder.getContextSelector()));
+			// TODO we need to find a better way to do this ContextSelector delegation;
+			// the code below belongs somewhere else!!!
+			// the bound of 4 is what is needed to pass our current framework tests
+			if (AstTranslator.NEW_LEXICAL) {
+//				builder.setContextSelector(new RecursionBoundContextSelector(builder.getContextSelector(), 4));
+				builder.setContextSelector(new RecursionCheckContextSelector(builder.getContextSelector()));
+			}
 			ProgressMaster master = ProgressMaster.make(new NullProgressMonitor());
 			if (timeout > 0) {
 				master.setMillisPerWorkItem(timeout * 1000);
@@ -123,8 +134,10 @@ public class HTMLCGBuilder {
 	}
 
 	/**
-	 * Usage: HTMLCGBuilder -src path_to_html_file -timeout timeout_in_seconds
+	 * Usage: HTMLCGBuilder -src path_to_html_file -timeout timeout_in_seconds -reachable function_name
 	 * timeout argument is optional and defaults to {@link #DEFAULT_TIMEOUT}.
+	 * reachable argument is optional.  if provided, and some reachable function name contains function_name,
+	 * will print "REACHABLE"
 	 * @throws IOException 
 	 * @throws ClassHierarchyException 
 	 * 
@@ -141,12 +154,24 @@ public class HTMLCGBuilder {
 		} else {
 			timeout = DEFAULT_TIMEOUT;
 		}
+		String reachableName = null;
+		if (parsedArgs.containsKey("reachable")) {
+			reachableName = parsedArgs.getProperty("reachable");
+		}
 		// suppress debug output
 		JavaScriptFunctionDotCallTargetSelector.WARN_ABOUT_IMPRECISE_CALLGRAPH = false;
-		CGBuilderResult res = buildHTMLCG(src, timeout, true);
+		CGBuilderResult res = buildHTMLCG(src, timeout, true, AstTranslator.NEW_LEXICAL ? CGBuilderType.ONE_CFA_PRECISE_LEXICAL : CGBuilderType.ZERO_ONE_CFA);
 		if(res.construction_time == -1)
 			System.out.println("TIMED OUT");
 		else
 			System.out.println("Call graph construction took " + res.construction_time/1000.0 + " seconds");
+		if (reachableName != null) {
+			for (CGNode node : res.cg) {
+				if (node.getMethod().getDeclaringClass().getName().toString().contains(reachableName)) {
+					System.out.println("REACHABLE");
+					break;
+				}
+			}
+		}
 	}
 }
