@@ -73,7 +73,7 @@ public abstract class TestForInBodyExtraction {
 				     "      dest[p] = src[p];" +
 				     "     })(p);" +
 				     "  }" +
-				     "}");
+		         "}");
 	}
 	
 	// example from the paper, but with single-statement loop body
@@ -587,7 +587,7 @@ public abstract class TestForInBodyExtraction {
 	}
 	
 	// this test fails since the rewritten CAst contains one more level of blocks
-  @Test @Ignore
+  @Test
 	public void test24() {
 		testRewriter("var addSlickPseudos = function() {" +
 				     "  for(var name in pseudos)" +

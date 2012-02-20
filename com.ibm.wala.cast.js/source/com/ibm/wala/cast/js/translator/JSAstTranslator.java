@@ -125,9 +125,9 @@ public class JSAstTranslator extends AstTranslator {
   protected void declareFunction(CAstEntity N, WalkContext context) {
     String fnName = composeEntityName(context, N);
     if (N.getKind() == CAstEntity.SCRIPT_ENTITY) {
-      ((JavaScriptLoader) loader).defineScriptType("L" + fnName, N.getPosition());
+      ((JavaScriptLoader) loader).defineScriptType("L" + fnName, N.getPosition(), N, context);
     } else if (N.getKind() == CAstEntity.FUNCTION_ENTITY) {
-      ((JavaScriptLoader) loader).defineFunctionType("L" + fnName, N.getPosition());
+      ((JavaScriptLoader) loader).defineFunctionType("L" + fnName, N.getPosition(), N, context);
     } else {
       Assertions.UNREACHABLE();
     }
@@ -142,9 +142,6 @@ public class JSAstTranslator extends AstTranslator {
 
     if (DEBUG)
       System.err.println(cfg);
-
-    // force creation of these constants by calling the getter methods
-    symtab.getNullConstant();
  
     ((JavaScriptLoader) loader).defineCodeBodyCode("L" + fnName, cfg, symtab, hasCatchBlock, caughtTypes, hasMonitorOp, LI,
         debugInfo);
@@ -212,7 +209,7 @@ public class JSAstTranslator extends AstTranslator {
       context.cfg().addInstruction(
         ((JSInstructionFactory)insts).GetInstruction(context.cfg().getCurrentInstruction(), result, x, field));
     } else {
-      context.cfg().addInstruction(((JSInstructionFactory) insts).PropertyRead(context.cfg().getCurrentInstruction(), result, x, getValue(elt)));
+      context.cfg().addInstruction(((JSInstructionFactory) insts).PropertyRead(context.cfg().getCurrentInstruction(), result, x, context.getValue(elt)));
     }
 
     // generate code to handle read of non-existent property
@@ -241,7 +238,7 @@ public class JSAstTranslator extends AstTranslator {
       }
       context.cfg().addInstruction(put);
     } else {
-      context.cfg().addInstruction(((JSInstructionFactory) insts).PropertyWrite(context.cfg().getCurrentInstruction(), receiver, getValue(elt), rval));
+      context.cfg().addInstruction(((JSInstructionFactory) insts).PropertyWrite(context.cfg().getCurrentInstruction(), receiver, context.getValue(elt), rval));
     }
   }
 
@@ -330,26 +327,26 @@ public class JSAstTranslator extends AstTranslator {
 
     } else {
 
-      context.cfg().addInstruction(((JSInstructionFactory)insts).IsDefinedInstruction(context.cfg().getCurrentInstruction(), result, ref, getValue(f)));
+      context.cfg().addInstruction(((JSInstructionFactory) insts).IsDefinedInstruction(context.cfg().getCurrentInstruction(), result, ref, context.getValue(f)));
     }
   }
 
-  protected boolean visitInstanceOf(CAstNode n, Context c, CAstVisitor visitor) {
+  protected boolean visitInstanceOf(CAstNode n, WalkContext c, CAstVisitor<WalkContext> visitor) {
     WalkContext context = (WalkContext) c;
     int result = context.currentScope().allocateTempValue();
-    setValue(n, result);
+    context.setValue(n, result);
     return false;
   }
 
-  protected void leaveInstanceOf(CAstNode n, Context c, CAstVisitor visitor) {
+  protected void leaveInstanceOf(CAstNode n, WalkContext c, CAstVisitor<WalkContext> visitor) {
     WalkContext context = (WalkContext) c;
-    int result = getValue(n);
+    int result = context.getValue(n);
 
     visit(n.getChild(0), context, visitor);
-    int value = getValue(n.getChild(0));
+    int value = context.getValue(n.getChild(0));
 
     visit(n.getChild(1), context, visitor);
-    int type = getValue(n.getChild(1));
+    int type = context.getValue(n.getChild(1));
 
     context.cfg().addInstruction(new JavaScriptInstanceOf(context.cfg().getCurrentInstruction(), result, value, type));
   }
@@ -364,18 +361,18 @@ public class JSAstTranslator extends AstTranslator {
     //context.cfg().addInstruction(((JSInstructionFactory)insts).PutInstruction(context.cfg().getCurrentInstruction(), 1, tempVal, "arguments"));
   }
 
-  protected boolean doVisit(CAstNode n, Context cntxt, CAstVisitor visitor) {
+  protected boolean doVisit(CAstNode n, WalkContext cntxt, CAstVisitor<WalkContext> visitor) {
     WalkContext context = (WalkContext) cntxt;
     switch (n.getKind()) {
     case CAstNode.TYPE_OF: {
       int result = context.currentScope().allocateTempValue();
 
       this.visit(n.getChild(0), context, this);
-      int ref = getValue(n.getChild(0));
+      int ref = context.getValue(n.getChild(0));
 
       context.cfg().addInstruction(((JSInstructionFactory)insts).TypeOfInstruction(context.cfg().getCurrentInstruction(), result, ref));
 
-      setValue(n, result);
+      context.setValue(n, result);
       return true;
     }
 
@@ -383,7 +380,7 @@ public class JSAstTranslator extends AstTranslator {
     case JavaScriptCAstNode.EXIT_WITH: {
 
       this.visit(n.getChild(0), context, this);
-      int ref = getValue(n.getChild(0));
+      int ref = context.getValue(n.getChild(0));
 
       context.cfg().addInstruction(((JSInstructionFactory)insts).WithRegion(context.cfg().getCurrentInstruction(), ref, 
           n.getKind() == JavaScriptCAstNode.ENTER_WITH));
