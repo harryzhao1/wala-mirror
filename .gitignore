@@ -13,6 +13,7 @@ com.ibm.wala.cast.js.rhino.test/*.html
 com.ibm.wala.cast.js.test/examples-src/ajaxslt/
 com.ibm.wala.cast.java.polyglot/lib/
 .metadata/
+*~
 com.ibm.wala.cast.js.test/examples-src/ajaxslt/
 com.ibm.wala.core.testdata/@dot/
 com.ibm.wala.core.testdata/lib/
