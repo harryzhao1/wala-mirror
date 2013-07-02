@@ -79,4 +79,10 @@ public abstract class AbstractURLModule implements Module, ModuleEntry {
     return new NonNullSingletonIterator<ModuleEntry>(this);
   }
 
+  @Override
+  public Module getContainer() {
+    // URLs are freestanding, without containers
+    return null;
+  }
+  
 }

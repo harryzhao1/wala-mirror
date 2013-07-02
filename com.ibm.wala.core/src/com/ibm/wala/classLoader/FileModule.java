@@ -27,11 +27,14 @@ public abstract class FileModule implements Module, ModuleEntry {
 
   private final File file;
 
-  public FileModule(File f) throws IllegalArgumentException {
+  private final Module container;
+  
+  public FileModule(File f, Module container) throws IllegalArgumentException {
     if (f == null) {
       throw new IllegalArgumentException("f is null");
     }
     this.file = f;
+    this.container = container;
     if (!f.exists()) {
       throw new IllegalArgumentException("bad file " + f.getAbsolutePath());
     }
@@ -112,4 +115,10 @@ public abstract class FileModule implements Module, ModuleEntry {
     Assertions.UNREACHABLE("implement me");
     return null;
   }
+  
+  @Override
+  public Module getContainer() {
+    return container;
+  }
+
 }

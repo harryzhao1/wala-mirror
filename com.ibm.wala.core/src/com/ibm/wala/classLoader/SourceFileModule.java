@@ -24,14 +24,14 @@ import com.ibm.wala.util.io.FileSuffixes;
 public class SourceFileModule extends FileModule implements Module, ModuleEntry, SourceModule {
 
   private final String fileName;
-  public SourceFileModule(File f, String fileName) {
-    super(f);
+  public SourceFileModule(File f, String fileName, Module container) {
+    super(f, container);
     this.fileName = fileName;
   }
 
   public SourceFileModule(File f, SourceFileModule clonedFrom) {
 
-    super(f);
+    super(f, clonedFrom.getContainer());
     if (clonedFrom == null) {
       throw new IllegalArgumentException("clonedFrom is null");
     }

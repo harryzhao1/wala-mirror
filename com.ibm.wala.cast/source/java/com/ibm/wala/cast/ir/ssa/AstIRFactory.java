@@ -105,12 +105,17 @@ public class AstIRFactory implements IRFactory {
 
     @Override
     protected String instructionPosition(int instructionIndex) {
-      Position pos = ((AstMethod) getMethod()).getSourcePosition(instructionIndex);
+      Position pos = getMethod().getSourcePosition(instructionIndex);
       if (pos == null) {
         return "";
       } else {
         return pos.toString();
       }
+    }
+
+    @Override
+    public AstMethod getMethod() {
+      return (AstMethod)super.getMethod();
     }
 
     private AstIR(AstMethod method, SSAInstruction[] instructions, SymbolTable symbolTable, SSACFG cfg, SSAOptions options) {

@@ -160,4 +160,10 @@ public class CompoundModule implements ModuleEntry, Module, SourceModule {
     return new Reader();
   }
 
+  @Override
+  public Module getContainer() {
+    // stitched together module has no single container
+    return null;
+  }
+
 }

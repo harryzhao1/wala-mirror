@@ -26,12 +26,9 @@ public class JarFileEntry implements ModuleEntry {
 
   private final JarFileModule jarFileModule;
 
-  private final JarFile jarFile;
-
   protected JarFileEntry(String entryName, JarFileModule jarFile) {
     this.entryName = entryName;
     this.jarFileModule = jarFile;
-    this.jarFile = jarFile.getJarFile();
   }
 
   /*
@@ -56,6 +53,7 @@ public class JarFileEntry implements ModuleEntry {
   @Override
   public InputStream getInputStream() {
     try {
+      JarFile jarFile = jarFileModule.getJarFile();
       return jarFile.getInputStream(jarFile.getEntry(entryName));
     } catch (Exception e) {
       // TODO Auto-generated catch block
@@ -70,13 +68,12 @@ public class JarFileEntry implements ModuleEntry {
    */
   public long getSize() {
     // TODO: cache this?
-    return jarFile.getEntry(entryName).getSize();
+    return jarFileModule.getJarFile().getEntry(entryName).getSize();
   }
 
   @Override
   public String toString() {
-    // TODO Auto-generated method stub
-    return jarFile.getName() + ":" + getName();
+    return jarFileModule.getJarFile().getName() + ":" + getName();
   }
 
   /*
@@ -92,20 +89,21 @@ public class JarFileEntry implements ModuleEntry {
    */
   @Override
   public Module asModule() {
-    return new NestedJarFileModule(jarFileModule, jarFile.getEntry(entryName));
+    return new NestedJarFileModule(jarFileModule, jarFileModule.getJarFile().getEntry(entryName));
   }
 
   public JarFile getJarFile() {
-    return jarFile;
+    return jarFileModule.getJarFile();
   }
   
-  protected JarFileModule getJarFileModule() {
+  @Override
+  public JarFileModule getContainer() {
     return jarFileModule;
   }
 
   @Override
   public int hashCode() {
-    return entryName.hashCode() * 5059 + jarFile.hashCode();
+    return entryName.hashCode() * 5059 + jarFileModule.getJarFile().hashCode();
   }
 
   /*

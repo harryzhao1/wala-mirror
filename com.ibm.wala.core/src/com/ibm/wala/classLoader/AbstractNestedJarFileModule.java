@@ -32,6 +32,8 @@ public abstract class AbstractNestedJarFileModule implements Module {
 
   private static final boolean DEBUG = false;
 
+  private final Module container;
+  
   /**
    * For efficiency, we cache the byte[] holding each ZipEntry's contents; this will help avoid multiple unzipping TODO: use a soft
    * reference?
@@ -39,6 +41,10 @@ public abstract class AbstractNestedJarFileModule implements Module {
   private HashMap<String, byte[]> cache = null;
 
   protected abstract InputStream getNestedContents() throws IOException;
+
+  protected AbstractNestedJarFileModule(Module container) {
+    this.container = container;
+  }
   
   public InputStream getInputStream(String name) {
     populateCache();
@@ -146,6 +152,12 @@ public abstract class AbstractNestedJarFileModule implements Module {
     @Override
     public String getName() {
       return name;
+    }
+
+    
+    @Override
+    public Module getContainer() {
+      return container;
     }
 
     /*

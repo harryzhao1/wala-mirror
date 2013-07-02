@@ -20,6 +20,7 @@ import junit.framework.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.ibm.wala.cast.ipa.callgraph.CAstCallGraphUtil;
 import com.ibm.wala.cast.js.ipa.callgraph.JSCFABuilder;
 import com.ibm.wala.cast.js.ipa.callgraph.JSCallGraphUtil;
 import com.ibm.wala.cast.js.ipa.callgraph.PropertyNameContextSelector;
@@ -701,9 +702,16 @@ public abstract class TestSimpleCallGraphShape extends TestJSCallGraphShape {
         public void cancel() {
         }
       });
-      JSCallGraphUtil.AVOID_DUMP = false;
-      JSCallGraphUtil.dumpCG(B.getPointerAnalysis(), CG);
+      CAstCallGraphUtil.dumpCG(B.getPointerAnalysis(), CG);
     }
+
+    @Test
+  public void testTutorialExample() throws IllegalArgumentException, IOException, CancelException, WalaException {
+    PropagationCallGraphBuilder B = JSCallGraphBuilderUtil.makeScriptCGBuilder("tests", "tutorial-example.js");
+    CallGraph CG = B.makeCallGraph(B.getOptions());
+    CAstCallGraphUtil.dumpCG(B.getPointerAnalysis(), CG);
+    // verifyGraphAssertions(CG, assertionsForDateProperty);
+  }
 
   protected IVector<Set<Pair<CGNode, Integer>>> computeIkIdToVns(PointerAnalysis pa) {
 

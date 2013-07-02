@@ -479,7 +479,7 @@ public abstract class IRTests {
       if (f.isDirectory()) {
         engine.addSourceModule(new SourceDirectoryTreeModule(f));
       } else {
-        engine.addSourceModule(new SourceFileModule(f, srcFileName));
+        engine.addSourceModule(new SourceFileModule(f, srcFileName, null));
       }
     }
   }

@@ -144,6 +144,8 @@ public abstract class BytecodeClass<T extends IClassLoader> implements IClass {
     }
   }
 
+  public abstract Module getContainer();
+
   @Override
   public IClassLoader getClassLoader() {
     return loader;
@@ -591,6 +593,5 @@ public abstract class BytecodeClass<T extends IClassLoader> implements IClass {
         }
       }
     }
-  }
-
+  }  
 }

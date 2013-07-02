@@ -24,8 +24,8 @@ public class ClassFileModule extends FileModule {
 
   private final String className;
 
-  public ClassFileModule(File f) throws InvalidClassFileException {
-    super(f);
+  public ClassFileModule(File f, Module container) throws InvalidClassFileException {
+    super(f, container);
     ShrikeClassReaderHandle reader = new ShrikeClassReaderHandle(this);
     ImmutableByteArray name = ImmutableByteArray.make(reader.get().getName());
     className = name.toString();
