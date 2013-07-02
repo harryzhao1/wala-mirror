@@ -2,6 +2,7 @@
 *.class
 *.out
 *.swp
+*/bin/
 */bin/*
 *~
 .metadata/
@@ -22,3 +23,4 @@ com.ibm.wala.core/com.ibm.wala.core*.jar
 com.ibm.wala.core/dat/wala.properties
 com.ibm.wala.ide.jdt.test/testdata/
 edu.kit.wala.smali.test/out/
+target/
