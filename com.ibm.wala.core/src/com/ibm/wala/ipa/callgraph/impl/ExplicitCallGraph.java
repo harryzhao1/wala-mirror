@@ -10,6 +10,7 @@
  *******************************************************************************/
 package com.ibm.wala.ipa.callgraph.impl;
 
+import java.lang.ref.WeakReference;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -141,6 +142,9 @@ public class ExplicitCallGraph extends BasicCallGraph<SSAContextInterpreter> imp
     protected final SparseVector<Object> targets = new SparseVector<Object>();
 
     private final MutableSharedBitVectorIntSet allTargets = new MutableSharedBitVectorIntSet();
+    
+    private WeakReference<IR> ir = new WeakReference<IR>(null);
+    private WeakReference<DefUse> du = new WeakReference<DefUse>(null);
 
     /**
      * @param method
@@ -295,11 +299,31 @@ public class ExplicitCallGraph extends BasicCallGraph<SSAContextInterpreter> imp
     }
 
     public IR getIR() {
-      return getCallGraph().getInterpreter(this).getIR(this);
+      if (getMethod().isSynthetic()) {
+        // disable local cache in this case, as context interpreters
+        // do weird things like mutate IRs
+        return getCallGraph().getInterpreter(this).getIR(this);
+      }
+      IR ir = this.ir.get();
+      if (ir == null) {
+        ir = getCallGraph().getInterpreter(this).getIR(this);
+        this.ir = new WeakReference<IR>(ir);
+      }
+      return ir;
     }
 
     public DefUse getDU() {
-      return getCallGraph().getInterpreter(this).getDU(this);
+      if (getMethod().isSynthetic()) {
+        // disable local cache in this case, as context interpreters
+        // do weird things like mutate IRs
+        return getCallGraph().getInterpreter(this).getDU(this);
+      }
+      DefUse du = this.du.get();
+      if (du == null) {
+        du = getCallGraph().getInterpreter(this).getDU(this);
+        this.du = new WeakReference<DefUse>(du);
+      }
+      return du;
     }
 
     public ExplicitCallGraph getCallGraph() {

@@ -25,9 +25,9 @@ import com.ibm.wala.cast.ir.translator.TranslatorToCAst.Error;
  */
 public abstract class JSSourceExtractor {
 
-  public static boolean DELETE_UPON_EXIT = false;
+  public static boolean DELETE_UPON_EXIT = true;
 
-  public static boolean USE_TEMP_NAME = false;
+  public static boolean USE_TEMP_NAME = true;
 
   public abstract Set<MappedSourceModule> extractSources(URL entrypointUrl, IHtmlParser htmlParser, IUrlResolver urlResolver) throws IOException, Error;
   

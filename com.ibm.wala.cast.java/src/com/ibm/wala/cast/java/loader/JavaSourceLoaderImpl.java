@@ -221,7 +221,7 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
   }
   
   /**
-   * DOMO representation of a field on a Java type that resides in a source file
+   * WALA representation of a field on a Java type that resides in a source file
    * 
    * @author rfuhrer
    */

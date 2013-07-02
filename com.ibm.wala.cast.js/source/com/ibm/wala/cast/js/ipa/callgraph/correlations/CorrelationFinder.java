@@ -54,6 +54,7 @@ import com.ibm.wala.ssa.SSABinaryOpInstruction;
 import com.ibm.wala.ssa.SSAInstruction;
 import com.ibm.wala.ssa.SSAOptions;
 import com.ibm.wala.ssa.SSAPhiInstruction;
+import com.ibm.wala.util.WalaException;
 import com.ibm.wala.util.collections.HashMapFactory;
 import com.ibm.wala.util.collections.Iterator2Iterable;
 import com.ibm.wala.util.collections.ObjectArrayMapping;
@@ -262,7 +263,11 @@ public class CorrelationFinder {
     WebPageLoaderFactory loaders = new WebPageLoaderFactory(translatorFactory);
     CAstAnalysisScope scope = new CAstAnalysisScope(scripts, loaders, Collections.singleton(JavaScriptLoader.JS));
     IClassHierarchy cha = ClassHierarchy.make(scope, loaders, JavaScriptLoader.JS);
-    Util.checkForFrontEndErrors(cha);
+    try {
+      Util.checkForFrontEndErrors(cha);
+    } catch (WalaException e) {
+      return Collections.emptyMap();
+    }
     IRFactory<IMethod> factory = AstIRFactory.makeDefaultFactory();
 
     Map<IMethod, CorrelationSummary> correlations = HashMapFactory.make();
