@@ -658,6 +658,10 @@ public abstract class TestSimpleCallGraphShape extends TestJSCallGraphShape {
         }
         public void worked(int units) {
         }
+        public void subTask(String subTask) {
+        }
+        public void cancel() {
+        }
       });
       JSCallGraphUtil.AVOID_DUMP = false;
       JSCallGraphUtil.dumpCG(B.getPointerAnalysis(), CG);
