@@ -4,7 +4,6 @@
 *.swp
 */bin/*
 *~
-*~
 .metadata/
 com.ibm.wala.cast.java.polyglot/lib/
 com.ibm.wala.cast.java.test.data/src/JLex/
@@ -21,4 +20,5 @@ com.ibm.wala.core.tests/dat/wala.examples.properties
 com.ibm.wala.core/@dot
 com.ibm.wala.core/com.ibm.wala.core*.jar
 com.ibm.wala.core/dat/wala.properties
+com.ibm.wala.ide.jdt.test/testdata/
 edu.kit.wala.smali.test/out/
