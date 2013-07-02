@@ -15,6 +15,7 @@ com.ibm.wala.cast.js.rhino.test/2009_swine_flu_outbreak
 com.ibm.wala.cast.js.rhino/lib/
 com.ibm.wala.cast.js.test/examples-src/ajaxslt/
 com.ibm.wala.cast.js/lib/
+com.ibm.wala.core.testdata/*.jar
 com.ibm.wala.core.testdata/@dot/
 com.ibm.wala.core.testdata/lib/
 com.ibm.wala.core.tests/dat/wala.examples.properties

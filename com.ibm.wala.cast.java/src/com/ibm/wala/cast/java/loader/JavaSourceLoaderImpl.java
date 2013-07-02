@@ -111,14 +111,17 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
       this.annotations = annotations;
     }
 
+    @Override
     public Collection<Annotation> getAnnotations() {
       return annotations;
     }
 
+    @Override
     public IClassHierarchy getClassHierarchy() {
       return cha;
     }
 
+    @Override
     public IClass getSuperclass() {
       boolean excludedSupertype=false;
       for (Iterator iter = superTypeNames.iterator(); iter.hasNext();) {
@@ -149,6 +152,7 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
       return null;
     }
 
+    @Override
     public Collection<IClass> getDirectInterfaces() {
       List<IClass> result = new ArrayList<IClass>();
       for (Iterator iter = superTypeNames.iterator(); iter.hasNext();) {
@@ -183,6 +187,7 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
       return enclosingClass;
     }
 
+    @Override
     public String toString() {
       StringBuffer sb = new StringBuffer("<src-class: " );
       sb.append(getName().toString());
@@ -270,6 +275,7 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
       return 0;
     }
 
+    @Override
     public TypeReference getParameterType(int i) {
       return parameterTypes[i];
     }
@@ -296,6 +302,7 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
       return types;
     }
 
+    @Override
     public TypeReference[] getDeclaredExceptions() {
       return exceptionTypes;
     }
@@ -314,6 +321,7 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
       return result;
     }
 
+    @Override
     public String toString() {
       return "<src-method: " + this.getReference() + ">";
     }
@@ -330,20 +338,24 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
       super(methodEntity, owner);
     }
 
+    @Override
     public String getLocalVariableName(int bcIndex, int localNumber) {
       Assertions.UNREACHABLE("AbstractJavaMethod.getLocalVariableName() called");
       return null;
     }
 
+    @Override
     public boolean hasLocalVariableTable() {
       Assertions.UNREACHABLE("AbstractJavaMethod.hasLocalVariableTable() called");
       return false;
     }
 
+    @Override
     public LexicalParent[] getParents() {
       return new LexicalParent[0];
     }
 
+    @Override
     public IClassHierarchy getClassHierarchy() {
       return cha;
     }
@@ -361,18 +373,22 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
       super(methodEntity, owner, cfg, symtab, hasCatchBlock, caughtTypes, hasMonitorOp, lexicalInfo, debugInfo);
     }
 
+    @Override
     public IClassHierarchy getClassHierarchy() {
       return cha;
     }
 
+    @Override
     public String getLocalVariableName(int bcIndex, int localNumber) {
       return null;
     }
 
+    @Override
     public boolean hasLocalVariableTable() {
       return false;
     }
 
+    @Override
     public LexicalParent[] getParents() {
       if (AstTranslator.DEBUG_LEXICAL) {
         System.err.println(("resolving parents of " + this));
@@ -415,10 +431,12 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
 
         final int hack = i;
         result[i] = new LexicalParent() {
+          @Override
           public String getName() {
             return parents[hack];
           }
 
+          @Override
           public AstMethod getMethod() {
             return (AstMethod) cls.getMethod(sel);
           }
@@ -482,6 +500,7 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
     return cha;
   }
 
+  @Override
   protected void loadAllSources(Set<ModuleEntry> modules) {
     getTranslator().loadAllSources(modules);
   }
@@ -491,6 +510,8 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
   public static volatile boolean deleteTypeMapAfterInit = true;
 /** END Custom change: Optional deletion of fTypeMap */
   
+
+  @Override
   public void init(List<Module> modules) throws IOException {
     super.init(modules);
 /** BEGIN Custom change: Optional deletion of fTypeMap */
@@ -535,97 +556,120 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
     return javaClass;
   }
 
+  @Override
   public String toString() {
     return "Java Source Loader (classes " + loadedClasses.values() + ")";
   }
   
   public static class InstructionFactory extends JavaInstructionFactory implements AstJavaInstructionFactory {
 
+    @Override
     public com.ibm.wala.cast.java.ssa.EnclosingObjectReference EnclosingObjectReference(int iindex, int lval, TypeReference type) {
       return new EnclosingObjectReference(iindex, lval, type);
     }
 
+    @Override
     public AstJavaNewEnclosingInstruction JavaNewEnclosingInstruction(int iindex, int result, NewSiteReference site, int enclosing) {
       return new AstJavaNewEnclosingInstruction(iindex, result, site, enclosing);
     }
 
+    @Override
     public AstJavaInvokeInstruction JavaInvokeInstruction(int iindex, int result, int[] params, int exception, CallSiteReference site) {
-      return new AstJavaInvokeInstruction(result, params, exception, site);
+      return new AstJavaInvokeInstruction(iindex, result, params, exception, site);
     }
 
+    @Override
     public AstJavaInvokeInstruction JavaInvokeInstruction(int iindex, int[] params, int exception, CallSiteReference site) {
       return new AstJavaInvokeInstruction(iindex, params, exception, site);
     }
 
+    @Override
     public AstJavaInvokeInstruction JavaInvokeInstruction(int iindex, int[] results, int[] params, int exception, CallSiteReference site,
         Access[] lexicalReads, Access[] lexicalWrites) {
       return new AstJavaInvokeInstruction(iindex, results, params, exception, site, lexicalReads, lexicalWrites);
     }
 
+    @Override
     public AstAssertInstruction AssertInstruction(int iindex, int value, boolean fromSpecification) {
       return new AstAssertInstruction(iindex, value, fromSpecification);
     }
 
+    @Override
     public com.ibm.wala.cast.ir.ssa.AssignInstruction AssignInstruction(int iindex, int result, int val) {
        return new AssignInstruction(iindex, result, val);
     }
 
+    @Override
     public com.ibm.wala.cast.ir.ssa.EachElementGetInstruction EachElementGetInstruction(int iindex, int value, int objectRef) {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public com.ibm.wala.cast.ir.ssa.EachElementHasNextInstruction EachElementHasNextInstruction(int iindex, int value, int objectRef) {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public AstEchoInstruction EchoInstruction(int iindex, int[] rvals) {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public AstGlobalRead GlobalRead(int iindex, int lhs, FieldReference global) {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public AstGlobalWrite GlobalWrite(int iindex, FieldReference global, int rhs) {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public AstIsDefinedInstruction IsDefinedInstruction(int iindex, int lval, int rval, int fieldVal, FieldReference fieldRef) {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public AstIsDefinedInstruction IsDefinedInstruction(int iindex, int lval, int rval, FieldReference fieldRef) {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public AstIsDefinedInstruction IsDefinedInstruction(int iindex, int lval, int rval, int fieldVal) {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public AstIsDefinedInstruction IsDefinedInstruction(int iindex, int lval, int rval) {
       throw new UnsupportedOperationException();
     }
 
+    @Override
     public AstLexicalRead LexicalRead(int iindex, Access[] accesses) {
       return new AstLexicalRead(iindex, accesses);
     }
 
+    @Override
     public AstLexicalRead LexicalRead(int iindex, Access access) {
        return new AstLexicalRead(iindex, access);
     }
 
+    @Override
     public AstLexicalRead LexicalRead(int iindex, int lhs, String definer, String globalName) {
       return new AstLexicalRead(iindex, lhs, definer, globalName);
     }
 
+    @Override
     public AstLexicalWrite LexicalWrite(int iindex, Access[] accesses) {
       return new AstLexicalWrite(iindex, accesses);
     }
 
+    @Override
     public AstLexicalWrite LexicalWrite(int iindex, Access access) {
       return new AstLexicalWrite(iindex, access);
     }
 
+    @Override
     public AstLexicalWrite LexicalWrite(int iindex, String definer, String globalName, int rhs) {
        return new AstLexicalWrite(iindex, definer, globalName, rhs);
     }
@@ -637,6 +681,7 @@ public abstract class JavaSourceLoaderImpl extends ClassLoaderImpl {
   
   private static final InstructionFactory insts = new InstructionFactory();
   
+  @Override
   public InstructionFactory getInstructionFactory() {
     return insts;
   }
